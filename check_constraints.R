@@ -40,7 +40,7 @@ check_constraints <- function(c_h,
     cost_ok <- TRUE
   }
   
-  feasible <- integer_ok && # must all be satified to be a feasible solution
+  feasible <- integer_ok && # must all be satisfied to be a feasible solution
     cluster_ok &&
     unit_ok &&
     sample_size_ok &&

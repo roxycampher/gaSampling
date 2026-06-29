@@ -3,7 +3,7 @@ allocate_twostage_ga <- function(strata,
                                  max_cost,
                                  c_h,
                                  popSize = 100,
-                                 maxiter = 200,
+                                 maxiter = 1000,
                                  seed = NULL) {
   
   if (!is.null(seed)) {
@@ -12,15 +12,30 @@ allocate_twostage_ga <- function(strata,
   
   L <- nrow(strata)
   
-  lower <- rep(1, L)
-  upper <- ceiling(total_n / c_h)
+  lower <- rep(1L, L)
+  upper <- floor(total_n / c_h)
   
-  # Simple feasible starting solution when c_h values are equal
-  if (length(unique(c_h)) == 1) {
-    starting_kh <- rep(total_n / sum(c_h), L)
-  } else {
-    starting_kh <- rep(round(total_n / sum(c_h)), L)
+  feasibility <- check_total_n_feasible(
+    total_n = total_n,
+    c_h = c_h,
+    lower = lower,
+    upper = upper
+  )
+  
+  if (!feasibility$feasible) {
+    warning(feasibility$message)
   }
+  
+  # Simple starting solution
+  starting_kh_raw <- rep(total_n / sum(c_h), L)
+  
+  starting_kh <- repair_kh(
+    x = starting_kh_raw,
+    c_h = c_h,
+    total_n = total_n,
+    lower = lower,
+    upper = upper
+  )
   
   suggestions <- matrix(starting_kh, nrow = 1)
   
@@ -43,7 +58,14 @@ allocate_twostage_ga <- function(strata,
     run = 50
   )
   
-  best_kh <- round(ga_fit@solution[1, ])
+  best_kh <- repair_kh(
+    x = ga_fit@solution[1, ],
+    c_h = c_h,
+    total_n = total_n,
+    lower = rep(1L, length(c_h)),
+    upper = floor(total_n / c_h)
+  )
+  
   best_nh <- best_kh * c_h
   
   constraint_check <- check_constraints(
