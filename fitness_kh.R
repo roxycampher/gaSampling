@@ -1,9 +1,10 @@
+# fitness function for k_h with a given c_h
 fitness_kh_constrained <- function(x, strata, total_n, max_cost, c_h) {
   
   # x = c(k_1, k_2, ..., k_L)
   k_h <- repair_kh(
     x = x,
-    c_h = c_h,
+    c_h = c_h, # with fixed c_h
     total_n = total_n,
     lower = rep(1L, length(c_h)),
     upper = floor(total_n / c_h)

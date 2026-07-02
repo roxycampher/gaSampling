@@ -1,4 +1,4 @@
-prepare_strata <- function(data,
+prepare_strata <- function(data, # might have to change for the joint
                            strata_var,
                            cluster_var,
                            unit_var,

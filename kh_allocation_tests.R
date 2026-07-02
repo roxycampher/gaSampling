@@ -1,3 +1,4 @@
+rm(list = ls())
 library(dplyr)
 library(readr)
 library(GA)
@@ -7,10 +8,11 @@ source("cost_twostage.R")
 source("check_constraints.R")
 source("repair_kh.R")
 source("sample_size_feasibility.R")
-source("fitness.R")
+source("fitness_kh.R")
 source("prepare_strata.R")
-source("allocate_twostage_ga.R")
+source("allocate_twostage_ga_kh.R")
 
+# The data cannot be stored in the github as it is to large - will just remove before commits and pushing
 toy_data <- read.csv("ecdc-2021-public-v2.csv")
 
 # Clean outcome variable
@@ -39,10 +41,10 @@ sum(strata$W_h)
 c_h <- rep(10, nrow(strata))
 k_h <- rep(10, nrow(strata)) # we fit both to test the functions - not an accurate final result just a test
 
-total_n <- sum(c_h * k_h)
+(total_n <- sum(c_h * k_h))
 max_cost <- 20000
 
-# Test variance
+# Test variance function
 var_result <- variance_twostage(
   c_h = c_h,
   k_h = k_h,
@@ -53,7 +55,7 @@ var_result <- variance_twostage(
 
 var_result
 
-# Test cost
+# Test cost function
 cost_result <- cost_twostage(
   c_h = c_h,
   k_h = k_h,
@@ -86,7 +88,7 @@ fitness_result <- fitness_kh_constrained(
 
 fitness_result
 
-# Check fitness equals negative variance (We use - variance because we will use GA to maximise the -variance)
+# Check fitness equals negative variance (We use - variance because we will use GA to maximize the -variance)
 all.equal(fitness_result, -var_result)
 
 
@@ -102,9 +104,9 @@ source("cost_twostage.R")
 source("check_constraints.R")
 source("repair_kh.R")
 source("sample_size_feasibility.R")
-source("fitness.R")
+source("fitness_kh.R")
 source("prepare_strata.R")
-source("allocate_twostage_ga.R")
+source("allocate_twostage_ga_kh.R")
 
 toy_data <- read.csv("ecdc-2021-public-v2.csv")
 
@@ -146,10 +148,9 @@ ga_result$feasible
 
 ################# TEST MULTIPLE RUNS ###########################################
 
-set.seed(2026)
-
 seeds <- 1:50
 
+# run the GA over 50 seeds
 ga_runs <- lapply(seeds, function(s) {
   allocate_twostage_ga(
     strata = strata,
@@ -162,6 +163,7 @@ ga_runs <- lapply(seeds, function(s) {
   )
 })
 
+# Take the list of 50 GA outputs and then extract the summary statistics we need
 run_summary <- data.frame(
   seed = seeds,
   variance = sapply(ga_runs, function(x) x$variance),
@@ -172,17 +174,15 @@ run_summary <- data.frame(
 
 run_summary
 
-summary(run_summary$variance)
-
-min(run_summary$variance)
+min(run_summary$variance) # best variance achieved
 mean(run_summary$variance)
-sd(run_summary$variance) # should be small
-sum(run_summary$feasible)
+sd(run_summary$variance) # should be small (stable)
+sum(run_summary$feasible) # how many feasible solutions are there?
 
 # Best GA run
 best_index <- which.min(run_summary$variance)
 
-best_run <- ga_runs[[best_index]]
+best_run <- ga_runs[[best_index]] # GA output for the best run
 
 best_run$allocation
 best_run$variance
@@ -190,34 +190,35 @@ best_run$total_n
 best_run$total_cost
 best_run$feasible
 
-# Average allocations across runs
-allocations <- do.call(rbind, lapply(seq_along(ga_runs), function(i) {
-  out <- ga_runs[[i]]$allocation
-  out$seed <- seeds[i]
-  out
-}))
+# Average allocations across runs (how stable allocations are across stratum)
+allocations <- dplyr::bind_rows(
+  lapply(seq_along(ga_runs), function(i) {
+    ga_runs[[i]]$allocation |>
+      dplyr::mutate(seed = seeds[i])
+  })
+)
 
 allocation_summary <- allocations |>
   dplyr::group_by(stratum) |>
   dplyr::summarise(
     mean_k_h = mean(k_h),
     sd_k_h = sd(k_h),
-    min_k_h = min(k_h),
-    max_k_h = max(k_h),
-    mean_n_h = mean(n_h),
+    min_k_h = min(k_h), # smallest k_h across all 50 runs
+    max_k_h = max(k_h), # largest k_h across all 50 runs
+    mean_n_h = mean(n_h), # avg stratum sample size across the 50 GA runs
     .groups = "drop"
   )
 
 allocation_summary
 
-# Comparison to equal allocation
-k_equal <- rep(10, nrow(strata))
+#### Comparison to equal allocation ###
 
-c_h <- rep(10, nrow(strata))
+# EQUAL ALLOCATION
+k_equal <- rep(10, nrow(strata)) # set an equal allocation for k_h across strata
 
 variance_equal <- variance_twostage(
-  c_h = c_h,
-  k_h = k_equal,
+  c_h = c_h, # fixed the same as before
+  k_h = k_equal, # equal k_h allocation
   W_h = strata$W_h,
   sigma2_bh = strata$sigma2_bh,
   sigma2_wh = strata$sigma2_wh
@@ -225,7 +226,7 @@ variance_equal <- variance_twostage(
 
 cost_equal <- cost_twostage(
   c_h = c_h,
-  k_h = k_equal,
+  k_h = k_equal, 
   cost_cluster = strata$cost_cluster,
   cost_unit = strata$cost_unit
 )
@@ -243,6 +244,76 @@ variance_equal
 cost_equal
 check_equal
 
-# Comnpare 
+# COMPARISON 
 best_run$variance
 variance_equal
+
+better1 <- best_run$variance < variance_equal
+better1
+
+### Compare with proportional allocation ###
+
+# Raw proportional stratum sample sizes
+n_prop_raw <- total_n * strata$W_h
+
+k_prop_raw <- n_prop_raw / c_h
+
+# make integer
+k_prop <- repair_kh(
+  x = k_prop_raw,
+  c_h = c_h,
+  total_n = total_n,
+  lower = rep(1L, length(c_h)),
+  upper = floor(total_n / c_h)
+)
+
+n_prop <- c_h * k_prop
+
+# calculate variance
+variance_prop <- variance_twostage(
+  c_h = c_h,
+  k_h = k_prop,
+  W_h = strata$W_h,
+  sigma2_bh = strata$sigma2_bh,
+  sigma2_wh = strata$sigma2_wh
+)
+
+# calculate cost
+cost_prop <- cost_twostage(
+  c_h = c_h,
+  k_h = k_prop,
+  cost_cluster = strata$cost_cluster,
+  cost_unit = strata$cost_unit
+)
+
+# check feasibility
+check_prop <- check_constraints(
+  k_h = k_prop,
+  c_h = c_h,
+  total_n = total_n,
+  max_cost = max_cost,
+  cost_cluster = strata$cost_cluster,
+  cost_unit = strata$cost_unit
+)
+
+# create proportional allocation table
+allocation_prop <- data.frame(
+  stratum = strata$stratum,
+  W_h = strata$W_h,
+  c_h = c_h,
+  k_h = k_prop,
+  n_h = n_prop,
+  n_prop_raw = n_prop_raw
+)
+
+allocation_prop
+variance_prop
+cost_prop
+check_prop
+
+# compare
+variance_prop
+best_run$variance
+
+better2 <- best_run$variance < variance_prop
+better2
