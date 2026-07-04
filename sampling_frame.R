@@ -103,7 +103,8 @@
 #' }
 #'
 #' @export
-prepare_sampling_frame <- function(data,
+prepare_sampling_frame <- 
+  function(data,
                                    y_var,
                                    total_c,
                                    cost_cluster = 1,
@@ -143,7 +144,7 @@ prepare_sampling_frame <- function(data,
       # Grand mean of stratum (SSU-weighted)
       ybar_bar_h <- sum(h$N_hi * h$ybar_hi) / N_h
       
-      # Between-cluster variance (Cochran 10.7)
+      # Between-cluster variance
       sigma2_bh <- if (C_h > 1) {
         sum((h$ybar_hi - ybar_bar_h)^2) / (C_h - 1)
       } else {
