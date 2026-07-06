@@ -147,23 +147,23 @@ ga_result$feasible
 
 
 ################# TEST MULTIPLE RUNS ###########################################
+library(ggplot2)
+seeds <- 1:25
 
-seeds <- 1:50
-
-# run the GA over 50 seeds
+# run the GA over seeds
 ga_runs <- lapply(seeds, function(s) {
   allocate_twostage_ga(
     strata = strata,
     total_n = 900,
     max_cost = 18000,
-    c_h = rep(10, nrow(strata)),
+    c_h = c_h,
     popSize = 100,
     maxiter = 1000,
     seed = s
   )
 })
 
-# Take the list of 50 GA outputs and then extract the summary statistics we need
+# Take the list of GA outputs and then extract the summary statistics we need
 run_summary <- data.frame(
   seed = seeds,
   variance = sapply(ga_runs, function(x) x$variance),
@@ -178,6 +178,12 @@ min(run_summary$variance) # best variance achieved
 mean(run_summary$variance)
 sd(run_summary$variance) # should be small (stable)
 sum(run_summary$feasible) # how many feasible solutions are there?
+
+run_summary %>%
+  ggplot( aes(x=seeds, y=variance)) +
+  geom_line() +
+  geom_point() +
+  ggtitle("Variance obtained across different seeds.")
 
 # Best GA run
 best_index <- which.min(run_summary$variance)
@@ -203,9 +209,9 @@ allocation_summary <- allocations |>
   dplyr::summarise(
     mean_k_h = mean(k_h),
     sd_k_h = sd(k_h),
-    min_k_h = min(k_h), # smallest k_h across all 50 runs
-    max_k_h = max(k_h), # largest k_h across all 50 runs
-    mean_n_h = mean(n_h), # avg stratum sample size across the 50 GA runs
+    min_k_h = min(k_h), # smallest k_h across all runs
+    max_k_h = max(k_h), # largest k_h across all runs
+    mean_n_h = mean(n_h), # avg stratum sample size across the GA runs
     .groups = "drop"
   )
 
