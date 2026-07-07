@@ -6,7 +6,9 @@ check_constraints <- function(c_h,
                               cost_cluster = NULL,
                               cost_unit = NULL,
                               min_clusters = 1,
-                              min_units = 1) {
+                              min_units = 1,
+                              max_clusters = NULL,
+                              max_units = NULL) {
   
   # Compute stratum sample sizes
   n_h <- c_h * k_h
@@ -17,6 +19,15 @@ check_constraints <- function(c_h,
   # Check lower bounds
   cluster_ok <- all(c_h >= min_clusters)
   unit_ok <- all(k_h >= min_units)
+  
+  # Check upper bounds
+  if (!is.null(max_clusters)) {
+    cluster_ok <- cluster_ok && all(c_h <= max_clusters)
+  }
+  
+  if (!is.null(max_units)) {
+    unit_ok <- unit_ok && all(k_h <= max_units)
+  }
   
   # Check total sample size constraint
   if (!is.null(total_n)) {

@@ -34,7 +34,8 @@ prepare_strata <- function(data, # might have to change for the joint
   strata <- dat |>
     dplyr::group_by(stratum) |>
     dplyr::summarise(
-      N_h = dplyr::n_distinct(unit),
+      N_h = dplyr::n_distinct(unit),       # number of units in stratum h
+      C_h = dplyr::n_distinct(cluster),    # number of clusters available in stratum h
       .groups = "drop"
     )
   

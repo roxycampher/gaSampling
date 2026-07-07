@@ -3,15 +3,22 @@ fitness_ckh_constrained <- function(x,
                                     total_n,
                                     max_cost,
                                     min_c_h = 1L,
-                                    min_k_h = 1L) {
+                                    min_k_h = 1L,
+                                    max_c_h = NULL,
+                                    max_k_h = NULL) {
   
   L <- nrow(strata)
   
   c_h <- round(x[1:L])
   k_h <- round(x[(L + 1):(2 * L)])
   
+  if (is.null(max_c_h)) max_c_h <- strata$C_h
+  if (is.null(max_k_h)) max_k_h <- rep(total_n, L)
+  
   c_h <- pmax(c_h, min_c_h)
   k_h <- pmax(k_h, min_k_h)
+  c_h <- pmin(c_h, max_c_h)
+  k_h <- pmin(k_h, max_k_h)
   
   # repair c_h and k_h jointly
   repaired <- repair_ckh(
@@ -19,7 +26,9 @@ fitness_ckh_constrained <- function(x,
     k_h = k_h,
     total_n = total_n,
     lower_c = rep(min_c_h, L),
-    lower_k = rep(min_k_h, L)
+    upper_c = max_c_h,
+    lower_k = rep(min_k_h, L),
+    upper_k = max_k_h
   )
   
   c_h <- repaired$c_h
@@ -31,10 +40,14 @@ fitness_ckh_constrained <- function(x,
     total_n = total_n,
     max_cost = max_cost,
     cost_cluster = strata$cost_cluster,
-    cost_unit = strata$cost_unit
+    cost_unit = strata$cost_unit,
+    min_clusters = min_c_h,
+    min_units = min_k_h,
+    max_clusters = max_c_h,
+    max_units = max_k_h
   )
   
-  if (!constraint_check$valid) {
+  if (!constraint_check$feasible || !repaired$repaired_exactly) {
     return(-1e10)
   }
   
