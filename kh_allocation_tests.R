@@ -323,3 +323,30 @@ best_run$variance
 
 better2 <- best_run$variance < variance_prop
 better2
+
+########## TEST WHEN WE HAVE PROP ALLOC FOR CH ################################
+# Raw proportional cluster allocation
+total_c <- 90
+
+c_h_raw <- total_c * strata$W_h
+
+# Round to integers
+c_h_prop <- round(c_h_raw)
+
+ga_result_prop_ch <- allocate_twostage_ga(
+  strata = strata,
+  total_n = total_n,
+  max_cost = max_cost,
+  c_h = c_h_prop,
+  popSize = 100,
+  maxiter = 500,
+  seed = 123
+)
+
+ga_result_prop_ch$allocation
+ga_result_prop_ch$variance
+ga_result_prop_ch$total_n
+ga_result_prop_ch$total_cost
+ga_result_prop_ch$feasible
+ga_result_prop_ch$constraint_check
+
