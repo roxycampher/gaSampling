@@ -1,5 +1,5 @@
 # Only optimizing kh and keeping ch fixed
-allocate_twostage_ga <- function(strata,
+allocate_twostage_ga_kh <- function(strata,
                                  total_n,
                                  max_cost,
                                  c_h,

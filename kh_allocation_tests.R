@@ -129,7 +129,7 @@ c_h <- rep(10, nrow(strata)) # fix c_h
 total_n <- 900
 max_cost <- 20000
 
-ga_result <- allocate_twostage_ga(
+ga_result <- allocate_twostage_ga_kh(
   strata = strata,
   total_n = total_n,
   max_cost = max_cost,
@@ -152,7 +152,7 @@ seeds <- 1:25
 
 # run the GA over seeds
 ga_runs <- lapply(seeds, function(s) {
-  allocate_twostage_ga(
+  allocate_twostage_ga_kh(
     strata = strata,
     total_n = 900,
     max_cost = 18000,
@@ -333,7 +333,7 @@ c_h_raw <- total_c * strata$W_h
 # Round to integers
 c_h_prop <- round(c_h_raw)
 
-ga_result_prop_ch <- allocate_twostage_ga(
+ga_result_prop_ch <- allocate_twostage_ga_kh(
   strata = strata,
   total_n = total_n,
   max_cost = max_cost,

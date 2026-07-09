@@ -105,100 +105,104 @@
 #' @export
 prepare_sampling_frame <- 
   function(data,
-                                   y_var,
-                                   total_c,
-                                   cost_cluster = 1,
-                                   cost_unit    = 1) {
-  
-  # --- 1. Validate raw SSU-level input ---------------------------------------
-  # data must have come through read_survey_data() — strata and cluster
-  # are the fixed standardised column names
-  .validate_ssu_input(data, y_var, total_c)
-  
-  # --- 2. PSU-level intermediates --------------------------------------------
-  # One row per cluster: cluster mean, cluster size, stratum membership
-  
-  psu_level <- do.call(rbind, lapply(
-    split(data, list(data[["strata"]], data[["cluster"]]), drop = TRUE),
-    function(grp) {
-      data.frame(
-        stratum = grp[["strata"]][1],
-        psu     = grp[["cluster"]][1],
-        N_hi    = nrow(grp),                        # SSU count in cluster
-        ybar_hi = mean(grp[[y_var]], na.rm = TRUE), # cluster mean
-        stringsAsFactors = FALSE
-      )
-    }
-  ))
-  
-  # --- 3. Stratum-level aggregation ------------------------------------------
-  
-  strata_list <- lapply(
-    split(psu_level, psu_level$stratum),
-    function(h) {
-      
-      C_h     <- nrow(h)                   # total clusters in stratum
-      N_h     <- sum(h$N_hi)               # total SSUs in stratum
-      N_bar_h <- mean(h$N_hi)              # mean cluster size
-      
-      # Grand mean of stratum (SSU-weighted)
-      ybar_bar_h <- sum(h$N_hi * h$ybar_hi) / N_h
-      
-      # Between-cluster variance
-      sigma2_bh <- if (C_h > 1) {
-        sum((h$ybar_hi - ybar_bar_h)^2) / (C_h - 1)
-      } else {
-        NA_real_
+           y_var,
+           total_c,
+           cost_cluster = 1,
+           cost_unit    = 1) {
+    
+    # --- 1. Validate raw SSU-level input ---------------------------------------
+    # data must have come through read_survey_data() — strata and cluster
+    # are the fixed standardised column names
+    .validate_ssu_input(data, y_var, total_c)
+    
+    # --- 2. PSU-level intermediates --------------------------------------------
+    # One row per cluster: cluster mean, cluster size, stratum membership
+    
+    psu_level <- do.call(rbind, lapply(
+      split(data, list(data[["strata"]], data[["cluster"]]), drop = TRUE),
+      function(grp) {
+        data.frame(
+          stratum = grp[["strata"]][1],
+          psu     = grp[["cluster"]][1],
+          N_hi    = nrow(grp),                        # SSU count in cluster
+          ybar_hi = mean(grp[[y_var]], na.rm = TRUE), # cluster mean
+          stringsAsFactors = FALSE
+        )
       }
-      
-      # Within-cluster variance: average of per-cluster sample variances
-      # We recover sum of squares from cluster mean and size using the
-      # per-cluster SSU records from the original data
-      # (passed through via environment — see .compute_sigma2_wh)
-      sigma2_wh <- .compute_sigma2_wh(
-        data    = data,
-        y_var   = y_var,
-        stratum = h$stratum[1],
-        psu_vec = h$psu
-      )
-      
-      data.frame(
-        stratum   = h$stratum[1],
-        C_h       = C_h,
-        N_h       = N_h,
-        N_bar_h   = N_bar_h,
-        W_h       = NA_real_,       # filled after all strata computed
-        sigma2_bh = sigma2_bh,
-        sigma2_wh = sigma2_wh,
-        stringsAsFactors = FALSE
-      )
-    }
-  )
-  
-  strata <- do.call(rbind, strata_list)
-  rownames(strata) <- NULL
-  
-  # --- 4. Stratum weights (proportion of total SSUs) -------------------------
-  strata$W_h <- strata$N_h / sum(strata$N_h)
-  
-  # --- 5. Cost columns -------------------------------------------------------
-  H <- nrow(strata)
-  
-  strata$cost_cluster <- .recycle_cost(cost_cluster, H, "cost_cluster")
-  strata$cost_unit    <- .recycle_cost(cost_unit,    H, "cost_unit")
-  
-  # --- 6. Suggested c_h: proportional to C_h ---------------------------------
-  c_h <- .proportional_ch(strata$C_h, total_c)
-  
-  # --- 7. Print summary ------------------------------------------------------
-  .print_frame_summary(strata, c_h)
-  
-  # --- 8. Return -------------------------------------------------------------
-  list(
-    strata = strata,
-    c_h    = c_h
-  )
-}
+    ))
+    
+    # --- 3. Stratum-level aggregation ------------------------------------------
+    
+    strata_list <- lapply(
+      split(psu_level, psu_level$stratum),
+      function(h) {
+        
+        C_h     <- nrow(h)                   # total clusters in stratum
+        N_h     <- sum(h$N_hi)               # total SSUs in stratum
+        N_bar_h <- mean(h$N_hi)              # mean cluster size
+        
+        # Grand mean of stratum (SSU-weighted)
+        ybar_bar_h <- sum(h$N_hi * h$ybar_hi) / N_h
+        
+        # Between-cluster variance
+        sigma2_bh <- if (C_h > 1) {
+          sum((h$ybar_hi - ybar_bar_h)^2) / (C_h - 1)
+        } else {
+          NA_real_
+        }
+        
+        # Within-cluster variance: average of per-cluster sample variances
+        # We recover sum of squares from cluster mean and size using the
+        # per-cluster SSU records from the original data
+        # (passed through via environment — see .compute_sigma2_wh)
+        sigma2_wh <- .compute_sigma2_wh(
+          data    = data,
+          y_var   = y_var,
+          stratum = h$stratum[1],
+          psu_vec = h$psu
+        )
+        
+        data.frame(
+          stratum   = h$stratum[1],
+          C_h       = C_h,
+          N_h       = N_h,
+          N_bar_h   = N_bar_h,
+          W_h       = NA_real_,       # filled after all strata computed
+          sigma2_bh = sigma2_bh,
+          sigma2_wh = sigma2_wh,
+          stringsAsFactors = FALSE
+        )
+      }
+    )
+    
+    strata <- do.call(rbind, strata_list)
+    rownames(strata) <- NULL
+    
+    # Singleton-only strata can produce undefined variance components.
+    strata$sigma2_bh[!is.finite(strata$sigma2_bh)] <- 0
+    strata$sigma2_wh[!is.finite(strata$sigma2_wh)] <- 0
+    
+    # --- 4. Stratum weights (proportion of total SSUs) -------------------------
+    strata$W_h <- strata$N_h / sum(strata$N_h)
+    
+    # --- 5. Cost columns -------------------------------------------------------
+    H <- nrow(strata)
+    
+    strata$cost_cluster <- .recycle_cost(cost_cluster, H, "cost_cluster")
+    strata$cost_unit    <- .recycle_cost(cost_unit,    H, "cost_unit")
+    
+    # --- 6. Suggested c_h: proportional to C_h ---------------------------------
+    c_h <- .proportional_ch(strata$C_h, total_c)
+    
+    # --- 7. Print summary ------------------------------------------------------
+    .print_frame_summary(strata, c_h)
+    
+    # --- 8. Return -------------------------------------------------------------
+    list(
+      strata = strata,
+      c_h    = c_h
+    )
+  }
 
 
 # =============================================================================
@@ -255,7 +259,11 @@ prepare_sampling_frame <-
     var(y, na.rm = TRUE)              # uses 1/(N_hi - 1) denominator
   })
   
-  mean(s2_per_cluster, na.rm = TRUE)
+  cluster_sizes <- sapply(psu_vec, function(psu) {
+    sum(data[["strata"]] == stratum & data[["cluster"]] == psu)
+  })
+  
+  weighted.mean(s2_per_cluster, cluster_sizes, na.rm = TRUE)
 }
 
 
