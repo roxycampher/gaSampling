@@ -5,7 +5,8 @@ allocate_twostage_ga_kh <- function(strata,
                                  c_h,
                                  popSize = 100,
                                  maxiter = 1000,
-                                 seed = NULL) {
+                                 seed = NULL,
+                                 run = 50) {
   
   if (!is.null(seed)) {
     set.seed(seed)
@@ -57,7 +58,7 @@ allocate_twostage_ga_kh <- function(strata,
     suggestions = suggestions,
     popSize = popSize, # number of candidate solutions per generation
     maxiter = maxiter, # number of generations
-    run = 50 # early stopping rule
+    run = run # early stopping rule
   )
   
   best_kh <- repair_kh( # post repair in case the GA solution is still real valued
