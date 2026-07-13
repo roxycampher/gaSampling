@@ -511,6 +511,64 @@ ga_stability_summary <- ga_run_summary |>
 
 print(ga_stability_summary)
 
+# ============================================================
+# Boxplot: final variance across seeds
+# ============================================================
+
+p_variance_boxplot <- ggplot(
+  ga_run_summary,
+  aes(
+    x = case,
+    y = variance,
+    fill = case
+  )
+) +
+  geom_boxplot(
+    width = 0.55,
+    alpha = 0.75,
+    outlier.shape = NA
+  ) +
+  geom_jitter(
+    aes(colour = case),
+    width = 0.10,
+    height = 0,
+    size = 2.5,
+    alpha = 0.75,
+    show.legend = FALSE
+  ) +
+  labs(
+    title = "Variation in final GA variance across seeds",
+    subtitle = paste0(
+      "Distribution of final solutions across ",
+      length(unique(ga_run_summary$seed)),
+      " random seeds"
+    ),
+    x = expression(c[h] ~ "allocation"),
+    y = "Final variance",
+    fill = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(
+      angle = 15,
+      hjust = 1
+    )
+  )
+
+p_variance_boxplot
+
+ggsave(
+  filename = file.path(
+    output_dir,
+    "kh_variance_boxplot_across_seeds.png"
+  ),
+  plot = p_variance_boxplot,
+  width = 10,
+  height = 9,
+  dpi = 300
+)
+
 p_seed_variance <- ggplot(
   ga_run_summary,
   aes(
@@ -572,3 +630,4 @@ p_kh_stability <- ggplot(
   theme(legend.position = "bottom")
 
 ggsave(file.path(output_dir, "kh_ch_stability.png"), p_kh_stability, width = 10, height = 6, dpi = 300)
+
