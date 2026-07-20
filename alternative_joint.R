@@ -110,11 +110,11 @@ allocate_twostage_ga_alternative <- function(strata,
   )
   
   # --- EXTRACT BEST SOLUTION & RE-RUN CONSTRAINTS FOR OUTPUT ---
-  # ... (Keep your existing best_c and best_k extraction code here) ... 
+  # ... (Keep your existing best_c and opt_k extraction code here) ... 
   
   # Calculate stratum-level variance components explicitly
   var_between_h <- (strata$W_h^2 * strata$sigma2_bh) / best_c
-  var_within_h  <- (strata$W_h^2 * strata$sigma2_wh) / (best_c * best_k)
+  var_within_h  <- (strata$W_h^2 * strata$sigma2_wh) / (best_c * opt_k)
   var_total_h   <- var_between_h + var_within_h
   
   # Sum across all strata to get global totals
@@ -134,7 +134,7 @@ allocate_twostage_ga_alternative <- function(strata,
     allocation      = data.frame(
       stratum        = strata$stratum, 
       c_h            = best_c, 
-      k_h            = best_k, 
+      k_h            = opt_k, 
       n_h            = final_check$n_h,
       var_between    = var_between_h,       # Stratum level breakdown
       var_within     = var_within_h,        # Stratum level breakdown
