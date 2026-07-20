@@ -110,4 +110,22 @@ print_benchmark_summary <- function(res_joint, res_decoupled, time_joint, time_d
   cat(sprintf("  Target Variance Minimization Delta  : %+.2f%% (Alternative is %s)\n", 
               var_pct, if(var_pct > 0) "better" else "worse"))
   cat("========================================================================\n")
+  cat("\n========================================================================\n")
+  cat("STRATUM-LEVEL VARIANCE COMPONENT BREAKDOWN COMPARISON\n")
+  cat("========================================================================\n")
+  cat(sprintf("%-16s | %-30s | %-30s\n", "Stratum Name", "Joint GA (Between / Within)", "Decoupled GA (Between / Within)"))
+  cat("-----------------|--------------------------------|--------------------------------\n")
+  
+  for (i in 1:nrow(frame$strata)) {
+    joint_row     <- res_joint$allocation[i, ]
+    decoupled_row <- res_decoupled$allocation[i, ]
+    
+    cat(sprintf("%-16s | B: %.4f / W: %.4f (n=%-4d) | B: %.4f / W: %.4f (n=%-4d)\n",
+                joint_row$stratum,
+                joint_row$var_between, joint_row$var_within, joint_row$n_h,
+                decoupled_row$var_between, decoupled_row$var_within, decoupled_row$n_h))
+  }
+  cat("========================================================================\n")
 }
+
+print_benchmark_summary(res_joint, res_decoupled, time_joint, time_decoupled)
