@@ -5,7 +5,9 @@ fitness_ckh_constrained <- function(x,
                                     min_c_h = 1L,
                                     min_k_h = 1L,
                                     max_c_h = NULL,
-                                    max_k_h = NULL) {
+                                    max_k_h = NULL,
+                                    sample_gap_penalty = 1e5,
+                                    cost_penalty = 1e3) {
   
   L <- nrow(strata)
   
@@ -28,7 +30,10 @@ fitness_ckh_constrained <- function(x,
     lower_c = rep(min_c_h, L),
     upper_c = max_c_h,
     lower_k = rep(min_k_h, L),
-    upper_k = max_k_h
+    upper_k = max_k_h,
+    max_cost = max_cost,
+    cost_cluster = strata$cost_cluster,
+    cost_unit = strata$cost_unit
   )
   
   c_h <- repaired$c_h
@@ -37,7 +42,7 @@ fitness_ckh_constrained <- function(x,
   constraint_check <- check_constraints(
     k_h = k_h,
     c_h = c_h,
-    total_n = total_n,
+    total_n = NULL,
     max_cost = max_cost,
     cost_cluster = strata$cost_cluster,
     cost_unit = strata$cost_unit,
@@ -47,7 +52,9 @@ fitness_ckh_constrained <- function(x,
     max_units = max_k_h
   )
   
-  if (!constraint_check$feasible || !repaired$repaired_exactly) {
+  if (!constraint_check$integer_ok ||
+      !constraint_check$cluster_ok ||
+      !constraint_check$unit_ok) {
     return(-1e10)
   }
   
@@ -59,5 +66,8 @@ fitness_ckh_constrained <- function(x,
     sigma2_wh = strata$sigma2_wh
   )
   
-  -variance
+  sample_penalty <- sample_gap_penalty * abs(repaired$sample_size_gap)
+  over_cost <- max(0, constraint_check$total_cost - max_cost)
+  
+  -variance - sample_penalty - cost_penalty * over_cost
 }

@@ -52,7 +52,10 @@ allocate_twostage_ga_joint <- function(strata,
       lower_c = lower_c,
       upper_c = upper_c,
       lower_k = lower_k,
-      upper_k = upper_k
+      upper_k = upper_k,
+      max_cost = max_cost,
+      cost_cluster = strata$cost_cluster,
+      cost_unit = strata$cost_unit
     )
     
     suggestions <- matrix(
@@ -103,8 +106,56 @@ allocate_twostage_ga_joint <- function(strata,
     lower_c = lower_c,
     upper_c = upper_c,
     lower_k = lower_k,
-    upper_k = upper_k
+    upper_k = upper_k,
+    max_cost = max_cost,
+    cost_cluster = strata$cost_cluster,
+    cost_unit = strata$cost_unit
   )
+  
+  repaired_check <- check_constraints(
+    c_h = repaired$c_h,
+    k_h = repaired$k_h,
+    total_n = total_n,
+    max_cost = max_cost,
+    cost_cluster = strata$cost_cluster,
+    cost_unit = strata$cost_unit,
+    min_clusters = 1L,
+    min_units = 1L,
+    max_clusters = upper_c,
+    max_units = upper_k
+  )
+  
+  if (!repaired_check$feasible && !is.null(suggestion)) {
+    suggestion_repaired <- repair_ckh(
+      c_h = suggestion[1:L],
+      k_h = suggestion[(L + 1):(2 * L)],
+      total_n = total_n,
+      lower_c = lower_c,
+      upper_c = upper_c,
+      lower_k = lower_k,
+      upper_k = upper_k,
+      max_cost = max_cost,
+      cost_cluster = strata$cost_cluster,
+      cost_unit = strata$cost_unit
+    )
+    
+    suggestion_check <- check_constraints(
+      c_h = suggestion_repaired$c_h,
+      k_h = suggestion_repaired$k_h,
+      total_n = total_n,
+      max_cost = max_cost,
+      cost_cluster = strata$cost_cluster,
+      cost_unit = strata$cost_unit,
+      min_clusters = 1L,
+      min_units = 1L,
+      max_clusters = upper_c,
+      max_units = upper_k
+    )
+    
+    if (suggestion_check$feasible) {
+      repaired <- suggestion_repaired
+    }
+  }
   
   best_c_h <- repaired$c_h
   best_k_h <- repaired$k_h

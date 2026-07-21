@@ -53,6 +53,49 @@ allocate_ch_proportional <- function(C_h, total_c, lower = rep(1L, length(C_h)))
   as.integer(c_h)
 }
 
+allocate_ch_by_weight <- function(weights,
+                                  total_c,
+                                  upper,
+                                  lower = rep(1L, length(weights))) {
+  weights <- as.numeric(weights)
+  upper <- as.integer(upper)
+  lower <- as.integer(lower)
+  total_c <- as.integer(total_c)
+  
+  if (length(lower) != length(weights) || length(upper) != length(weights)) {
+    stop("weights, lower, and upper must have the same length.")
+  }
+  
+  if (total_c < sum(lower) || total_c > sum(upper)) {
+    stop("total_c is infeasible for these c_h bounds.")
+  }
+  
+  weights[!is.finite(weights) | weights < 0] <- 0
+  
+  if (sum(weights) == 0) {
+    weights <- rep(1, length(weights))
+  }
+  
+  c_h <- lower
+  remaining <- total_c - sum(c_h)
+  capacity <- upper - c_h
+  
+  if (remaining > 0L) {
+    raw_extra <- remaining * weights / sum(weights)
+    extra <- pmin(floor(raw_extra), capacity)
+    c_h <- c_h + extra
+    
+    while (sum(c_h) < total_c) {
+      eligible <- which(c_h < upper)
+      frac <- raw_extra - floor(raw_extra)
+      h <- eligible[order(frac[eligible], weights[eligible], decreasing = TRUE)][1]
+      c_h[h] <- c_h[h] + 1L
+    }
+  }
+  
+  as.integer(c_h)
+}
+
 extract_ga_progress <- function(ga_result, case_name) {
   ga_summary <- as.data.frame(ga_result$ga_object@summary)
   ga_summary$generation <- seq_len(nrow(ga_summary))
@@ -160,6 +203,15 @@ c_h_proportional <- allocate_ch_proportional(
   lower = rep(1L, nrow(strata))
 )
 
+# c_h proportional to between-cluster variance.
+# This targets the variance component directly affected by sampling more clusters.
+c_h_variance <- allocate_ch_by_weight(
+  weights = strata$sigma2_bh,
+  total_c = total_c,
+  upper = strata$C_h,
+  lower = rep(1L, nrow(strata))
+)
+
 # 1. Equal c_h and optimised k_h
 ga_equal_ch <- allocate_twostage_ga_kh(
   strata = strata,
@@ -188,17 +240,31 @@ ga_proportional_ch <- allocate_twostage_ga_kh(
 
 case_2 <- ga_proportional_ch$allocation
 
-# 3. Equal allocation benchmark: equal c_h and equal k_h
+# 3. Variance-proportional c_h and optimised k_h
+ga_variance_ch <- allocate_twostage_ga_kh(
+  strata = strata,
+  total_n = total_n,
+  max_cost = max_cost,
+  c_h = c_h_variance,
+  popSize = 100,
+  maxiter = 200,
+  seed = 123,
+  run = 200
+)
+
+case_3 <- ga_variance_ch$allocation
+
+# 4. Equal allocation benchmark: equal c_h and equal k_h
 k_h_equal <- rep(total_n / total_c, nrow(strata))
 
-case_3 <- data.frame(
+case_4 <- data.frame(
   stratum = strata$stratum,
   c_h = c_h_equal,
   k_h = k_h_equal,
   n_h = c_h_equal * k_h_equal
 )
 
-# 4. Proportional allocation benchmark: proportional c_h and proportional n_h
+# 5. Proportional allocation benchmark: proportional c_h and proportional n_h
 k_h_proportional <- repair_kh(
   x = (total_n * strata$W_h) / c_h_proportional,
   c_h = c_h_proportional,
@@ -207,7 +273,7 @@ k_h_proportional <- repair_kh(
   upper = floor(total_n / c_h_proportional)
 )
 
-case_4 <- data.frame(
+case_5 <- data.frame(
   stratum = strata$stratum,
   c_h = c_h_proportional,
   k_h = k_h_proportional,
@@ -217,15 +283,17 @@ case_4 <- data.frame(
 case_allocations <- bind_rows(
   add_context(case_1, "1. Equal c_h, optimised k_h", strata),
   add_context(case_2, "2. Proportional c_h, optimised k_h", strata),
-  add_context(case_3, "3. Equal allocation benchmark", strata),
-  add_context(case_4, "4. Proportional allocation benchmark", strata)
+  add_context(case_3, "3. Variance-proportional c_h, optimised k_h", strata),
+  add_context(case_4, "4. Equal allocation benchmark", strata),
+  add_context(case_5, "5. Proportional allocation benchmark", strata)
 )
 
 case_summary <- bind_rows(
   summarise_case("1. Equal c_h, optimised k_h", case_1, strata, total_n, max_cost),
   summarise_case("2. Proportional c_h, optimised k_h", case_2, strata, total_n, max_cost),
-  summarise_case("3. Equal allocation benchmark", case_3, strata, total_n, max_cost),
-  summarise_case("4. Proportional allocation benchmark", case_4, strata, total_n, max_cost)
+  summarise_case("3. Variance-proportional c_h, optimised k_h", case_3, strata, total_n, max_cost),
+  summarise_case("4. Equal allocation benchmark", case_4, strata, total_n, max_cost),
+  summarise_case("5. Proportional allocation benchmark", case_5, strata, total_n, max_cost)
 ) |>
   arrange(variance) |>
   mutate(
@@ -233,15 +301,16 @@ case_summary <- bind_rows(
     improvement_vs_equal_benchmark_pct =
       100 *
       (
-        variance[case == "3. Equal allocation benchmark"][1] -
+        variance[case == "4. Equal allocation benchmark"][1] -
           variance
       ) /
-      variance[case == "3. Equal allocation benchmark"][1]
+      variance[case == "4. Equal allocation benchmark"][1]
   )
 
 generation_progress <- bind_rows(
   extract_ga_progress(ga_equal_ch, "1. Equal c_h, optimised k_h"),
-  extract_ga_progress(ga_proportional_ch, "2. Proportional c_h, optimised k_h")
+  extract_ga_progress(ga_proportional_ch, "2. Proportional c_h, optimised k_h"),
+  extract_ga_progress(ga_variance_ch, "3. Variance-proportional c_h, optimised k_h")
 )
 
 ch_allocation_comparison <- bind_rows(
@@ -258,6 +327,13 @@ ch_allocation_comparison <- bind_rows(
     C_h = strata$C_h,
     W_h = strata$W_h,
     c_h = c_h_proportional
+  ),
+  data.frame(
+    case = "Variance-proportional c_h",
+    stratum = strata$stratum,
+    C_h = strata$C_h,
+    W_h = strata$W_h,
+    c_h = c_h_variance
   )
 ) |>
   mutate(
@@ -266,16 +342,16 @@ ch_allocation_comparison <- bind_rows(
     cluster_sampling_fraction = c_h / C_h
   )
 
-readr::write_csv(case_summary, file.path(output_dir, "kh_four_case_summary.csv"))
-readr::write_csv(case_allocations, file.path(output_dir, "kh_four_case_allocations.csv"))
-readr::write_csv(generation_progress, file.path(output_dir, "kh_four_case_generation_progress.csv"))
+readr::write_csv(case_summary, file.path(output_dir, "kh_five_case_summary.csv"))
+readr::write_csv(case_allocations, file.path(output_dir, "kh_five_case_allocations.csv"))
+readr::write_csv(generation_progress, file.path(output_dir, "kh_five_case_generation_progress.csv"))
 readr::write_csv(ch_allocation_comparison, file.path(output_dir, "kh_ch_allocation_comparison.csv"))
 
 p_case_comparison <- ggplot(case_summary, aes(x = reorder(case, variance), y = variance, fill = case)) +
   geom_col(show.legend = FALSE) +
   coord_flip() +
   labs(
-    title = "Four allocation cases",
+    title = "Five allocation cases",
     subtitle = "Lower variance is better",
     x = NULL,
     y = "Variance"
@@ -289,7 +365,7 @@ p_generation <- ggplot(
   geom_line(linewidth = 1) +
   labs(
     title = "GA convergence for optimised k_h cases",
-    subtitle = "Case 1 fixes c_h equally; case 2 fixes c_h proportionally",
+    subtitle = "Fixed c_h strategies with optimised k_h",
     x = "Generation",
     y = "Best-so-far variance",
     colour = NULL
@@ -380,14 +456,14 @@ p_ch <- ch_allocation_comparison |>
   theme_minimal(base_size = 12) +
   theme(legend.position = "bottom")
 
-ggsave(file.path(output_dir, "kh_four_case_variance_comparison.png"), p_case_comparison, width = 9, height = 5, dpi = 300)
-ggsave(file.path(output_dir, "kh_four_case_ga_convergence.png"), p_generation, width = 9, height = 5, dpi = 300)
-ggsave(file.path(output_dir, "kh_four_case_ga_population_spread.png"), p_population_spread, width = 9, height = 5, dpi = 300)
-ggsave(file.path(output_dir, "kh_four_case_final_allocation.png"), p_final_allocation, width = 10, height = 6, dpi = 300)
-ggsave(file.path(output_dir, "kh_four_case_sample_share.png"), p_sample_share, width = 11, height = 7, dpi = 300)
+ggsave(file.path(output_dir, "kh_five_case_variance_comparison.png"), p_case_comparison, width = 9, height = 5, dpi = 300)
+ggsave(file.path(output_dir, "kh_five_case_ga_convergence.png"), p_generation, width = 9, height = 5, dpi = 300)
+ggsave(file.path(output_dir, "kh_five_case_ga_population_spread.png"), p_population_spread, width = 9, height = 5, dpi = 300)
+ggsave(file.path(output_dir, "kh_five_case_final_allocation.png"), p_final_allocation, width = 10, height = 6, dpi = 300)
+ggsave(file.path(output_dir, "kh_five_case_sample_share.png"), p_sample_share, width = 11, height = 7, dpi = 300)
 ggsave(file.path(output_dir, "kh_ch_allocation_comparison.png"), p_ch, width = 10, height = 6, dpi = 300)
 
-cat("\nFour-case summary:\n")
+cat("\nFive-case summary:\n")
 print(case_summary)
 
 cat("\nFinal allocations:\n")
@@ -483,15 +559,22 @@ multi_proportional <- run_ga_case(
   seeds = seeds
 )
 
+multi_variance <- run_ga_case(
+  c_h = c_h_variance,
+  case_name = "Variance-proportional c_h, optimised k_h",
+  seeds = seeds
+)
 
 ga_run_summary <- bind_rows(
   multi_equal$summary,
-  multi_proportional$summary
+  multi_proportional$summary,
+  multi_variance$summary
 )
 
 ga_allocations <- bind_rows(
   multi_equal$allocations,
-  multi_proportional$allocations
+  multi_proportional$allocations,
+  multi_variance$allocations
 )
 
 ga_stability_summary <- ga_run_summary |>
