@@ -159,28 +159,36 @@ allocate_twostage_ga_joint <- function(strata,
   
   best_c_h <- repaired$c_h
   best_k_h <- repaired$k_h
-  
+
   allocation <- data.frame(
     stratum = strata$stratum,
     c_h = best_c_h,
     k_h = best_k_h,
     n_h = best_c_h * best_k_h
-  )
+  ) 
   
-  variance <- variance_twostage(
-    c_h = best_c_h,
-    k_h = best_k_h,
-    W_h = strata$W_h,
-    sigma2_bh = strata$sigma2_bh,
-    sigma2_wh = strata$sigma2_wh
-  )
+
+  var_between_h <- (strata$W_h^2 * strata$sigma2_bh) / best_c_h
+  var_within_h  <- (strata$W_h^2 * strata$sigma2_wh) / (best_c_h * best_k_h)
+  var_total_h   <- var_between_h + var_within_h
+  
+  allocation$var_between <- var_between_h
+  allocation$var_within  <- var_within_h
+  allocation$var_total   <- var_total_h
+  
+  # Global sums for the summary statistics
+  total_variance <- sum(var_total_h)
+  total_between  <- sum(var_between_h)
+  total_within   <- sum(var_within_h)
+  
+  # =========================================================================
   
   total_cost <- cost_twostage(
     c_h = best_c_h,
     k_h = best_k_h,
     cost_cluster = strata$cost_cluster,
     cost_unit = strata$cost_unit
-  )
+  ) 
   
   constraint_check <- check_constraints(
     c_h = best_c_h,
@@ -195,14 +203,22 @@ allocate_twostage_ga_joint <- function(strata,
     max_units = upper_k
   )
   
+  # --- NOTE ON FEASIBILITY GATEKEEPER ---
+  # If you changed repair_ckh to handle minimums (>=), keep repaired$repaired_exactly.
+  # If your repair function overshoots and returns FALSE for repaired_exactly, 
+  # remove '&& repaired$repaired_exactly' so it relies strictly on constraint_check$feasible.
+  is_feasible <- constraint_check$feasible && repaired$repaired_exactly
+  
   list(
-    allocation = allocation,
-    variance = variance,
-    total_n = sum(best_c_h * best_k_h),
-    total_cost = total_cost,
-    feasible = constraint_check$feasible && repaired$repaired_exactly,
-    constraint_check = constraint_check,
-    repair = repaired,
-    ga_object = ga_fit
+    feasible         = is_feasible,
+    variance         = total_variance,  # Preserves keyword matching for comparison script
+    between_variance = total_between,    
+    within_variance  = total_within,     
+    total_n          = sum(best_c_h * best_k_h),  
+    total_cost       = total_cost,  
+    allocation       = allocation, # Contains the new row-by-row columns
+    constraint_check = constraint_check,  
+    repair           = repaired,  
+    ga_object        = ga_fit  
   )
 }

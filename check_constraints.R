@@ -31,7 +31,7 @@ check_constraints <- function(c_h,
   
   # Check total sample size constraint
   if (!is.null(total_n)) {
-    sample_size_ok <- sum(n_h) == total_n
+    sample_size_ok <- sum(n_h) >= total_n
   } else {
     sample_size_ok <- TRUE # if no total sample size was set
   }

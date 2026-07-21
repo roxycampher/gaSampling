@@ -22,11 +22,11 @@ fitness_ckh_constrained <- function(x,
   c_h <- pmin(c_h, max_c_h)
   k_h <- pmin(k_h, max_k_h)
   
-  # repair c_h and k_h jointly
+  # KEEP total_n passed here since your custom repair logic now handles >= total_n!
   repaired <- repair_ckh(
     c_h = c_h,
     k_h = k_h,
-    total_n = total_n,
+    total_n = total_n, 
     lower_c = rep(min_c_h, L),
     upper_c = max_c_h,
     lower_k = rep(min_k_h, L),
@@ -39,6 +39,7 @@ fitness_ckh_constrained <- function(x,
   c_h <- repaired$c_h
   k_h <- repaired$k_h
   
+  # KEEP total_n here too so check_constraints evaluates against your minimum boundary
   constraint_check <- check_constraints(
     k_h = k_h,
     c_h = c_h,
@@ -52,9 +53,14 @@ fitness_ckh_constrained <- function(x,
     max_units = max_k_h
   )
   
-  if (!constraint_check$integer_ok ||
-      !constraint_check$cluster_ok ||
-      !constraint_check$unit_ok) {
+
+#  if (!constraint_check$integer_ok ||
+#      !constraint_check$cluster_ok ||
+#      !constraint_check$unit_ok) {
+
+  # If repair function changed how it flags 'repaired_exactly' (e.g. meaning 'successfully >= total_n'),
+  # keep it! Otherwise, if check_constraints returns feasible = TRUE, we trust it.
+  if (!constraint_check$feasible) {
     return(-1e10)
   }
   
