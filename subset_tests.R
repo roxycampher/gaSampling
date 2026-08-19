@@ -169,8 +169,8 @@ full_survey_data <- read_survey_data(
   na_action = "warn"
 )
 
-full_total_n <- 900
-full_max_cost <- 18000
+full_total_n <- 100000
+full_max_cost <- 1000000
 full_total_c <- floor((full_max_cost - 10 * full_total_n) / 100)
 
 # Produces a proportional allocation of the 90 clusters
@@ -226,7 +226,7 @@ full_ga_result <- allocate_twostage_ga_joint(
   maxiter = 200,
   run = 50,
   seed = 123,
-  suggestion = c(full_repaired$c_h, full_repaired$k_h)
+  suggestion = c(full_repaired$c_h, full_repaired$k_h) # variance proportional c_h
 )
 
 full_ga_result$allocation
@@ -370,10 +370,7 @@ stability_summary <- run_summary |>
 
 stability_summary
 
-
-# ============================================================
 # 1. Variance obtained for every seed
-# ============================================================
 
 variance_seed_plot <- ggplot(
   run_summary,
@@ -433,10 +430,7 @@ ggsave(
   dpi = 300
 )
 
-
-# ============================================================
 # 2. Distribution of the final variance across runs
-# ============================================================
 
 variance_distribution_plot <- ggplot(
   run_summary,
@@ -484,9 +478,7 @@ ggsave(
 )
 
 
-# ============================================================
 # 3. Boxplot and individual final variance values
-# ============================================================
 
 variance_boxplot <- ggplot(
   run_summary,
@@ -543,9 +535,7 @@ ggsave(
 )
 
 
-# ============================================================
 # 4. Distribution of c_h across runs for each stratum
-# ============================================================
 
 c_h_stability_plot <- ggplot(
   allocations,
@@ -586,9 +576,7 @@ ggsave(
 )
 
 
-# ============================================================
 # 5. Distribution of k_h across runs for each stratum
-# ============================================================
 
 k_h_stability_plot <- ggplot(
   allocations,
@@ -628,10 +616,7 @@ ggsave(
   dpi = 300
 )
 
-
-# ============================================================
 # 6. Distribution of n_h = c_h * k_h across runs
-# ============================================================
 
 n_h_stability_plot <- ggplot(
   allocations,
@@ -677,9 +662,7 @@ ggsave(
 )
 
 
-# ============================================================
 # 7. Combined faceted allocation stability plot
-# ============================================================
 
 allocation_long <- allocations |>
   dplyr::select(
@@ -752,9 +735,7 @@ ggsave(
   dpi = 300
 )
 
-# ============================================================
 # 8. Feasibility and repair diagnostics across seeds
-# ============================================================
 
 repair_diagnostics <- run_summary |>
   dplyr::select(
@@ -820,9 +801,9 @@ ggsave(
 )
 
 
-# ============================================================
+################################################################################
 # Save the numerical results
-# ============================================================
+################################################################################
 
 write.csv(
   run_summary,
