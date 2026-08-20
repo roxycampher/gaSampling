@@ -23,7 +23,7 @@ cat("\n[1/4] Loading and cleaning ECDC dataset...")
 clean_data <- read_survey_data(
   data       = read.csv("ecdc-2021-public-v2.csv"),
   stratum_id = "province",
-  cluster_id = "dc",
+  cluster_id = "id_ward",
   y_var      = "count_register_all",
   na_action  = "warn"
 )
@@ -33,14 +33,14 @@ cat("\n[2/4] Generating stratum metrics and initial suggestions...")
 frame <- prepare_sampling_frame(
   data         = clean_data,
   y_var        = "count_register_all",
-  total_c      = 30,
-  cost_cluster = 500,  
-  cost_unit    = 50    
+  total_c      = 1000,
+  cost_cluster = 10000,  
+  cost_unit    = 200   
 )
 
 # 5. Define Shared Optimization Configurations
-TARGET_N   <- 1000
-MAX_BUDGET <- 70000
+TARGET_N   <- 10000
+MAX_BUDGET <- 1000000
 GA_SEED    <- 42
 POP_SIZE   <- 80
 MAX_ITER   <- 300
@@ -68,7 +68,7 @@ time_decoupled <- system.time({
     strata     = frame$strata,
     total_n    = TARGET_N,
     max_cost   = MAX_BUDGET,
-    total_c    = 30,           # Enforcing the global cluster cap strictly!
+    total_c    = 1000,           # Enforcing the global cluster cap strictly!
     popSize    = POP_SIZE,
     maxiter    = MAX_ITER,
     run        = RUN_LIMIT,
@@ -109,23 +109,32 @@ print_benchmark_summary <- function(res_joint, res_decoupled, time_joint, time_d
   cat(sprintf("  Wall-Clock Time Reduction           : +%.2f%%\n", time_pct))
   cat(sprintf("  Target Variance Minimization Delta  : %+.2f%% (Alternative is %s)\n", 
               var_pct, if(var_pct > 0) "better" else "worse"))
-  cat("========================================================================\n")
-  cat("\n========================================================================\n")
-  cat("STRATUM-LEVEL VARIANCE COMPONENT BREAKDOWN COMPARISON\n")
-  cat("========================================================================\n")
-  cat(sprintf("%-16s | %-30s | %-30s\n", "Stratum Name", "Joint GA (Between / Within)", "Decoupled GA (Between / Within)"))
-  cat("-----------------|--------------------------------|--------------------------------\n")
   
-  for (i in 1:nrow(frame$strata)) {
-    joint_row     <- res_joint$allocation[i, ]
-    decoupled_row <- res_decoupled$allocation[i, ]
+  cat("\n========================================================================\n")
+  cat("STRATUM-LEVEL DETAILED ALLOCATION & VARIANCE COMPARISON\n")
+  cat("========================================================================\n")
+  cat(sprintf("%-15s | %-32s | %-32s\n", 
+              "Stratum Name", 
+              "Joint GA (Baseline)", 
+              "Decoupled GA (Alternative)"))
+  cat(sprintf("%-15s | %-32s | %-32s\n", 
+              "", 
+              "c_h, k_h (n_h) [B / W]", 
+              "c_h, k_h (n_h) [B / W]"))
+  cat("----------------|----------------------------------|----------------------------------\n")
+  
+  for (i in 1:nrow(res_joint$allocation)) {
+    j_row <- res_joint$allocation[i, ]
+    d_row <- res_decoupled$allocation[i, ]
     
-    cat(sprintf("%-16s | B: %.4f / W: %.4f (n=%-4d) | B: %.4f / W: %.4f (n=%-4d)\n",
-                joint_row$stratum,
-                joint_row$var_between, joint_row$var_within, joint_row$n_h,
-                decoupled_row$var_between, decoupled_row$var_within, decoupled_row$n_h))
+    # Format strings for clean alignment
+    j_str <- sprintf("c=%-2d, k=%-2d (n=%-3d) [%.3f/%.3f]", 
+                     j_row$c_h, j_row$k_h, j_row$n_h, j_row$var_between, j_row$var_within)
+    d_str <- sprintf("c=%-2d  , k=%-2d (n=%-3d) [%.3f/%.3f]", 
+                     d_row$c_h, d_row$k_h, d_row$n_h, d_row$var_between, d_row$var_within)
+    
+    cat(sprintf("%-15s | %-32s | %-32s\n", j_row$stratum, j_str, d_str))
   }
   cat("========================================================================\n")
 }
-
 print_benchmark_summary(res_joint, res_decoupled, time_joint, time_decoupled)
