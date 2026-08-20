@@ -44,7 +44,7 @@ check_constraints <- function(c_h,
     }
     
     total_cost <- sum(cost_cluster * c_h + cost_unit * c_h * k_h)
-    cost_ok <- total_cost <= max_cost
+    cost_ok <- total_cost <= max_cost # max out cost
     
   } else { # default if left null
     total_cost <- NA

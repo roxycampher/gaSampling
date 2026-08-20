@@ -26,18 +26,19 @@ allocate_twostage_ga_alternative <- function(strata,
     opt_k[h] <- round(val)
   }
   
-  # If the total cluster limit multiplied by the optimal k_h cannot reach total_n,
-  # scale k_h up uniformly up front so that achieving total_n is mathematically possible.
-  max_possible_n <- total_c * mean(opt_k)
-  if (max_possible_n < total_n) {
-    scaling_factor <- total_n / max_possible_n
-    opt_k <- round(opt_k * scaling_factor)
-  }
   
   # Ensure k_h values stay within absolute boundaries
   opt_k <- pmax(opt_k, 1L)
-  opt_k <- pmin(opt_k, total_n)
+  # opt_k <- pmin(opt_k, total_n)
   
+
+  max_achievable_n <- sum(pmin(strata$C_h, total_c) * opt_k)  # rough upper bound
+  if (max_achievable_n < total_n) {
+    warning(sprintf(
+      "total_n = %d is not reachable using the analytically optimal k_h* under total_c = %d clusters (max achievable ≈ %d). Returning the closest feasible allocation instead of forcing an artificial k_h.",
+      total_n, total_c, max_achievable_n
+    ))
+  }
   # --- DECOUPLED FITNESS FUNCTION (L-DIMENSIONS) ---
   fitness_decoupled <- function(x) {
     c_h <- round(x)
