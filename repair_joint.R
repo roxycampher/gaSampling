@@ -10,10 +10,13 @@ repair_ckh <- function(c_h,
                        c_search_radius = 2L,
                        max_cost = NULL,
                        cost_cluster = NULL,
-                       cost_unit = NULL) {
+                       cost_unit = NULL,
+                       min_budget_use = 0.95, # hard coded for now
+                       budget_tol = 0.02) {
   L <- length(c_h)
   use_cost <- !is.null(max_cost)
   
+  # Default
   if (is.null(lower_c)) lower_c <- rep(2L, L)
   if (is.null(upper_c)) upper_c <- rep(Inf, L)
   if (is.null(lower_k)) lower_k <- rep(1L, L)
@@ -23,10 +26,13 @@ repair_ckh <- function(c_h,
     if (is.null(cost_cluster) || is.null(cost_unit)) {
       stop("cost_cluster and cost_unit must be supplied when max_cost is used.")
     }
+    if (is.null(min_budget_use)) min_budget_use <- 0
+    if (is.null(budget_tol)) budget_tol <- 0
     if (length(cost_cluster) == 1L) cost_cluster <- rep(cost_cluster, L)
     if (length(cost_unit) == 1L) cost_unit <- rep(cost_unit, L)
   }
   
+  # Length of vectors check
   if (length(k_h) != L ||
       length(lower_c) != L ||
       length(upper_c) != L ||
@@ -45,6 +51,7 @@ repair_ckh <- function(c_h,
   
   make_result <- function(c_candidate, k_candidate, iterations) {
     n_h <- as.integer(c_candidate * k_candidate)
+    achieved_total_n <- sum(n_h)
     total_cost <- if (use_cost) {
       cost_twostage(
         c_h = c_candidate,
@@ -55,19 +62,38 @@ repair_ckh <- function(c_h,
     } else {
       NA_real_
     }
+    sample_shortfall <- max(0, total_n - achieved_total_n)
+    sample_size_ok <- achieved_total_n >= total_n
+    
+    lower_cost_bound <- if (use_cost) max_cost * min_budget_use else NA_real_
+    upper_cost_bound <- if (use_cost) max_cost * (1 + budget_tol) else NA_real_
+    lower_cost_ok <- if (use_cost) total_cost >= lower_cost_bound else TRUE
+    upper_cost_ok <- if (use_cost) total_cost <= upper_cost_bound else TRUE
+    cost_ok <- lower_cost_ok && upper_cost_ok
+    budget_underuse <- if (use_cost) max(0, lower_cost_bound - total_cost) else 0
+    cost_over <- if (use_cost) max(0, total_cost - upper_cost_bound) else 0
     
     list(
       c_h = as.integer(c_candidate),
       k_h = as.integer(k_candidate),
       n_h = n_h,
-      total_n = sum(n_h),
+      total_n = achieved_total_n,
       target_total_n = total_n,
       total_cost = total_cost,
       max_cost = max_cost,
+      lower_cost_bound = lower_cost_bound,
+      upper_cost_bound = upper_cost_bound,
       cost_gap = if (use_cost) total_cost - max_cost else NA_real_,
-      cost_ok = if (use_cost) total_cost <= max_cost else TRUE,
-      sample_size_gap = sum(n_h) - total_n,
-      repaired_exactly = sum(n_h) == total_n,
+      cost_over = cost_over,
+      budget_underuse = budget_underuse,
+      budget_use_pct = if (use_cost) 100 * total_cost / max_cost else NA_real_,
+      lower_cost_ok = lower_cost_ok,
+      upper_cost_ok = upper_cost_ok,
+      cost_ok = cost_ok,
+      sample_size_gap = achieved_total_n - total_n,
+      sample_shortfall = sample_shortfall,
+      sample_size_ok = sample_size_ok,
+      repaired_exactly = sample_size_ok,
       iterations = iterations
     )
   }
@@ -75,11 +101,13 @@ repair_ckh <- function(c_h,
   score_result <- function(result) {
     c_change <- sum(abs(result$c_h - start_c_h))
     k_change <- sum(abs(result$k_h - start_k_h))
-    cost_over <- if (use_cost) max(0, result$cost_gap) else 0
+    unused_budget <- if (use_cost) abs(max_cost - result$total_cost) else 0
     
     c(
-      abs(result$sample_size_gap),
-      cost_over,
+      result$sample_shortfall,
+      result$cost_over,
+      result$budget_underuse,
+      unused_budget,
       c_change,
       k_change
     )
@@ -113,19 +141,38 @@ repair_ckh <- function(c_h,
         best_result <- current_result
       }
       
-      if (diff == 0L) {
+      if (current_result$sample_size_ok && current_result$cost_ok) {
         best_result <- current_result
         break
       }
       
-      if (diff > 0) {
-        possible <- which(k_candidate < upper_k & c_candidate <= diff)
+      if (diff > 0 || (use_cost && current_result$budget_underuse > 0)) {
+        budget_room <- if (use_cost) {
+          floor((max_cost * (1 + budget_tol) - current_result$total_cost) /
+                  (cost_unit * c_candidate))
+        } else {
+          rep(Inf, length(k_candidate))
+        }
+        possible <- which(
+          k_candidate < upper_k &
+            budget_room > 0 &
+            (diff > 0 | current_result$budget_underuse > 0)
+        )
+        
+        if (diff > 0) {
+          possible <- possible[c_candidate[possible] <= diff]
+        }
+        
+        if (length(possible) == 0L && use_cost && current_result$budget_underuse > 0) {
+          possible <- which(k_candidate < upper_k & budget_room > 0)
+        }
         
         if (length(possible) > 0L) {
           j <- possible[which.max(c_candidate[possible])]
           jump <- min(
-            floor(diff / c_candidate[j]),
+            if (diff > 0) floor(diff / c_candidate[j]) else Inf,
             upper_k[j] - k_candidate[j],
+            budget_room[j],
             max(1L, as.integer(k_tolerance))
           )
           k_candidate[j] <- k_candidate[j] + as.integer(jump)
