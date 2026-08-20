@@ -137,4 +137,5 @@ print_benchmark_summary <- function(res_joint, res_decoupled, time_joint, time_d
   }
   cat("========================================================================\n")
 }
+
 print_benchmark_summary(res_joint, res_decoupled, time_joint, time_decoupled)

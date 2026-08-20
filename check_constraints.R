@@ -9,8 +9,8 @@ check_constraints <- function(c_h,
                               min_units = 1,
                               max_clusters = NULL,
                               max_units = NULL,
-                              min_budget_use = NULL,
-                              budget_tol = NULL) {
+                              min_budget_use = 0.95,
+                              budget_tol = 0.02) {
   
   # Compute stratum sample sizes
   n_h <- c_h * k_h
