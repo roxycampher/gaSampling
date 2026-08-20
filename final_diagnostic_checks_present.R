@@ -6,9 +6,9 @@ library(GA)
 library(ggplot2)
 library(tidyr)
 
-joint_ga_pop_size <- 100
-joint_ga_maxiter <- 200
-joint_ga_run <- 50
+joint_ga_pop_size <- 20
+joint_ga_maxiter <- 25
+joint_ga_run <- 8
 joint_ga_seed_count <- 3
 joint_ga_max_candidate_c <- 1000
 
