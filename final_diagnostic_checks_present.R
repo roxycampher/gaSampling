@@ -9,7 +9,7 @@ library(tidyr)
 joint_ga_pop_size <- 20
 joint_ga_maxiter <- 25
 joint_ga_run <- 8
-joint_ga_seed_count <- 3
+joint_ga_seed_count <- 3 # The number of multiple runs - increase to at least 25 for final check for presentation
 joint_ga_max_candidate_c <- 1000
 
 source("variance_twostage.R")
