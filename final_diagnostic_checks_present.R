@@ -17,9 +17,11 @@ source("cost_twostage.R")
 source("check_constraints.R")
 source("repair_joint.R")
 source("fitness_ch_kh.R")
+source("feasible_joint_start.R")
 source("allocate_twostage_joint.R")
 source("read_survey_data.R")
 source("sampling_frame.R")
+source("frame_c.R")
 
 # Read toy data
 toy_data <- read.csv("ecdc-2021-public-v2.csv")
@@ -28,208 +30,6 @@ toy_data <- read.csv("ecdc-2021-public-v2.csv")
 toy_data$count_children_present <- readr::parse_number(
   toy_data$count_children_present
 )
-
-################## c_h proportional allocation function ########################
-
-# Deterministic ch allocation by a specified weight - can be proportional to n_h or sigma2_h
-allocate_ch_by_weight <- function(weights, # can be either of the three
-                                  total_c,
-                                  upper,
-                                  lower = rep(1L, length(weights))) {
-  weights <- as.numeric(weights)
-  upper <- as.integer(upper)
-  lower <- as.integer(lower)
-  total_c <- as.integer(total_c)
-  
-  if (length(lower) != length(weights) || length(upper) != length(weights)) {
-    stop("weights, lower, and upper must have the same length.")
-  }
-  
-  if (total_c < sum(lower) || total_c > sum(upper)) {
-    stop("total_c is infeasible for these c_h bounds.")
-  }
-  
-  weights[!is.finite(weights) | weights < 0] <- 0
-  
-  if (sum(weights) == 0) {
-    weights <- rep(1, length(weights))
-  }
-  
-  c_h <- lower
-  remaining <- total_c - sum(c_h)
-  capacity <- upper - c_h
-  
-  if (remaining > 0L) {
-    raw_extra <- remaining * weights / sum(weights)
-    extra <- pmin(floor(raw_extra), capacity)
-    c_h <- c_h + extra
-    
-    while (sum(c_h) < total_c) {
-      eligible <- which(c_h < upper)
-      frac <- raw_extra - floor(raw_extra)
-      h <- eligible[order(frac[eligible], weights[eligible], decreasing = TRUE)][1]
-      c_h[h] <- c_h[h] + 1L
-    }
-  }
-  
-  as.integer(c_h)
-}
-
-# Example proportionality:
-# 1. Proportional to stratum size
-# weights_size <- strata$N_h
-
-# 2. Proportional to standard deviation only
-# weights_sd <- sqrt(strata$sigma2_bh)
-
-# 3. Neyman-style: size × standard deviation (include both)
-# weights_neyman <- strata$N_h * sqrt(strata$sigma2_bh)
-
-
-################################################################################
-
-# For each, creates a starting c_h allocation and assigns a starting k_h
-build_joint_starting_suggestions <- function(strata,
-                                             total_c,
-                                             total_n,
-                                             lower_c, # bounds for the k_h and c_h
-                                             upper_c,
-                                             lower_k,
-                                             upper_k,
-                                             max_cost) {
-  starting_cases <- list(
-    "1. Proportional to stratum size" = strata$N_h,
-    "2. Proportional to between-cluster SD" = sqrt(strata$sigma2_bh),
-    "3. Neyman proportional" = strata$N_h * sqrt(strata$sigma2_bh),
-    "4. Equal c_h allocation" = rep(1, nrow(strata))
-  )
-  
-  dplyr::bind_rows(
-    lapply(names(starting_cases), function(case_name) {
-      initial_c_h <- allocate_ch_by_weight(
-        weights = starting_cases[[case_name]],
-        total_c = total_c,
-        upper = upper_c,
-        lower = lower_c
-      )
-      
-      initial_k_h <- rep(
-        max(1L, floor(total_n / sum(initial_c_h))),
-        nrow(strata)
-      )
-      
-      repaired <- repair_ckh(
-        c_h = initial_c_h,
-        k_h = initial_k_h,
-        total_n = total_n,
-        lower_c = lower_c,
-        upper_c = upper_c,
-        lower_k = lower_k,
-        upper_k = upper_k
-      )
-      
-      constraint_check <- check_constraints(
-        c_h = repaired$c_h,
-        k_h = repaired$k_h,
-        total_n = total_n,
-        max_cost = max_cost,
-        cost_cluster = strata$cost_cluster,
-        cost_unit = strata$cost_unit,
-        min_clusters = 1L,
-        min_units = 1L,
-        max_clusters = upper_c,
-        max_units = upper_k
-      )
-      
-      repaired_total_cost <- cost_twostage(
-        c_h = repaired$c_h,
-        k_h = repaired$k_h,
-        cost_cluster = strata$cost_cluster,
-        cost_unit = strata$cost_unit
-      )
-      
-      data.frame(
-        starting_suggestion = case_name,
-        stratum = strata$stratum,
-        initial_c_h = initial_c_h,
-        repaired_c_h = repaired$c_h,
-        repaired_k_h = repaired$k_h,
-        repaired_n_h = repaired$c_h * repaired$k_h,
-        repaired_total_n = repaired$total_n,
-        repaired_total_c = sum(repaired$c_h),
-        repaired_total_cost = repaired_total_cost,
-        repaired_sample_size_gap = repaired$sample_size_gap,
-        repaired_exactly = repaired$repaired_exactly,
-        repaired_feasible = constraint_check$feasible,
-        repair_iterations = repaired$iterations
-      )
-    })
-  )
-}
-
-# Picks a useful number of clusters for the comparison, avoids two bad cases:
-# too many clusters for the constraints or using all available clusters (all collapse to the same solution)
-choose_joint_total_c <- function(strata,
-                                 total_n,
-                                 max_cost,
-                                 lower_c,
-                                 upper_c,
-                                 lower_k,
-                                 upper_k,
-                                 max_candidate_c = 1000L) {
-  lower_total_c <- sum(lower_c)
-  upper_total_c <- min(
-    sum(upper_c) - 1L,
-    total_n,
-    as.integer(max_candidate_c)
-  )
-  
-  if (upper_total_c < lower_total_c) {
-    stop("No non-saturated total_c is available for the starting comparisons.")
-  }
-  
-  candidate_c <- unique(as.integer(c(
-    round(seq(upper_total_c, lower_total_c, length.out = 60)),
-    90L,
-    250L,
-    500L
-  )))
-  
-  candidate_c <- sort(
-    candidate_c[
-      candidate_c >= lower_total_c &
-        candidate_c <= upper_total_c
-    ],
-    decreasing = TRUE
-  )
-  
-  for (candidate in candidate_c) {
-    starting_suggestions <- build_joint_starting_suggestions(
-      strata = strata,
-      total_c = candidate,
-      total_n = total_n,
-      lower_c = lower_c,
-      upper_c = upper_c,
-      lower_k = lower_k,
-      upper_k = upper_k,
-      max_cost = max_cost
-    )
-    
-    diagnostics <- starting_suggestions |>
-      dplyr::group_by(starting_suggestion) |>
-      dplyr::summarise(
-        repaired_feasible = dplyr::first(repaired_feasible),
-        repaired_exactly = dplyr::first(repaired_exactly),
-        .groups = "drop"
-      )
-    
-    if (all(diagnostics$repaired_feasible) && all(diagnostics$repaired_exactly)) {
-      return(candidate)
-    }
-  }
-  
-  stop("Could not find a feasible total_c for all starting suggestions.")
-}
 
 summarise_joint_ga_result <- function(result, starting_suggestion, seed) {
   data.frame(
@@ -261,6 +61,7 @@ add_joint_allocation_context <- function(allocation, starting_suggestion, seed, 
     )
 }
 
+# SUMMARY HELPER SO THAT WE CAN COMPARE THE METHODS OF ALLOCATING C_H
 summarise_basic_allocation <- function(benchmark_name,
                                        c_h,
                                        k_h,
@@ -342,6 +143,7 @@ summarise_basic_allocation <- function(benchmark_name,
   )
 }
 
+# THE HARD CODED EQUAL AND PROPORTIONAL ALLOCATIONS
 build_basic_allocation_benchmarks <- function(strata,
                                               total_c,
                                               total_n,
@@ -427,17 +229,18 @@ survey_data <- read_survey_data(
 
 total_n <- 5000
 max_cost <- 1400000
-available_c <- nrow(unique(survey_data[c("strata", "cluster")]))
-affordable_c <- floor((max_cost - 10 * total_n) / 100)
-frame_c <- min(available_c, affordable_c)
+unit_cost <- 100
+cluster_cost <- 2500
+
+frame_c_h <- frame_c(survey_data, max_cost, unit_cost, cluster_cost, total_n)
 
 # Produces a proportional allocation of the available clusters, bounded by cost
 full_frame <- prepare_sampling_frame(
   data = survey_data,
   y_var = "count_children_present",
-  total_c = frame_c,
-  cost_cluster = 2500,
-  cost_unit = 100
+  total_c = frame_c_h,
+  cost_cluster = cluster_cost,
+  cost_unit = unit_cost
 )
 
 strata <- full_frame$strata
@@ -452,7 +255,7 @@ upper_c <- strata$C_h
 lower_k <- rep(1L, L)
 upper_k <- rep(total_n, L)
 
-total_c <- choose_joint_total_c(
+joint_start <- find_feasible_joint_start(
   strata = strata,
   total_n = total_n,
   max_cost = max_cost,
@@ -460,24 +263,20 @@ total_c <- choose_joint_total_c(
   upper_c = upper_c,
   lower_k = lower_k,
   upper_k = upper_k,
-  max_candidate_c = min(joint_ga_max_candidate_c, frame_c)
+  max_candidate_c = min(joint_ga_max_candidate_c, frame_c_h)
 )
 
+total_c <- joint_start$total_c
 total_c
 
 # Build the four starting suggestions used in the diagnostic comparisons:
 # three proportional c_h allocations and one equal c_h allocation. These are
 # starting suggestions only; the joint GA can still move both c_h and k_h.
-joint_starting_suggestions <- build_joint_starting_suggestions(
-  strata = strata,
-  total_c = total_c,
-  total_n = total_n,
-  lower_c = lower_c,
-  upper_c = upper_c,
-  lower_k = lower_k,
-  upper_k = upper_k,
-  max_cost = max_cost
-)
+joint_starting_suggestions <- joint_start$all_starts |>
+  dplyr::rename(
+    repaired_sample_size_gap = sample_size_gap,
+    repaired_feasible = feasible
+  )
 
 starting_suggestion_diagnostics <- joint_starting_suggestions |>
   dplyr::group_by(starting_suggestion) |>

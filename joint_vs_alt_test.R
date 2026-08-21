@@ -2,7 +2,7 @@
 # 
 # Executable script to run the optimizations and print the comparison summary
 # =============================================================================
-
+rm(list = ls())
 # 1. Load Required External Packages
 library(GA)
 library(dplyr)
@@ -15,8 +15,10 @@ source("check_constraints.R")
 source("variance_twostage.R")
 source("cost_twostage.R")
 source("fitness_ch_kh.R")
+source("feasible_joint_start.R")
 source("allocate_twostage_joint.R")
 source("alternative_joint.R")
+source("frame_c.R")
 
 # 3. Clean and process the dataset
 cat("\n[1/4] Loading and cleaning ECDC dataset...")
@@ -24,7 +26,7 @@ clean_data <- read_survey_data(
   data       = read.csv("ecdc-2021-public-v2.csv"),
   stratum_id = "province",
   cluster_id = "id_ward",
-  y_var      = "count_register_all",
+  y_var      = "count_children_present",
   na_action  = "warn"
 )
 
@@ -32,19 +34,19 @@ clean_data <- read_survey_data(
 cat("\n[2/4] Generating stratum metrics and initial suggestions...")
 frame <- prepare_sampling_frame(
   data         = clean_data,
-  y_var        = "count_register_all",
+  y_var        = "count_children_present",
   total_c      = 1000,
-  cost_cluster = 10000,  
-  cost_unit    = 200   
+  cost_cluster = 2500,  
+  cost_unit    = 100   
 )
 
 # 5. Define Shared Optimization Configurations
-TARGET_N   <- 10000
-MAX_BUDGET <- 1000000
+TARGET_N   <- 5000
+MAX_BUDGET <- 1400000
 GA_SEED    <- 42
-POP_SIZE   <- 80
-MAX_ITER   <- 300
-RUN_LIMIT  <- 30
+POP_SIZE   <- 20
+MAX_ITER   <- 25
+RUN_LIMIT  <- 8
 
 # 6. Execute Baseline Joint Algorithm (2L Dimensions)
 cat("\n[3/4] Running Baseline Joint GA (2L Dimensions)... Please wait.\n")
