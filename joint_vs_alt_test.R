@@ -2,7 +2,7 @@
 # 
 # Executable script to run the optimizations and print the comparison summary
 # =============================================================================
-
+rm(list = ls())
 # 1. Load Required External Packages
 library(GA)
 library(dplyr)
@@ -15,8 +15,10 @@ source("check_constraints.R")
 source("variance_twostage.R")
 source("cost_twostage.R")
 source("fitness_ch_kh.R")
+source("feasible_joint_start.R")
 source("allocate_twostage_joint.R")
 source("alternative_joint.R")
+source("frame_c.R")
 
 # 3. Clean and process the dataset
 cat("\n[1/4] Loading and cleaning ECDC dataset...")
@@ -24,27 +26,64 @@ clean_data <- read_survey_data(
   data       = read.csv("ecdc-2021-public-v2.csv"),
   stratum_id = "province",
   cluster_id = "id_ward",
-  y_var      = "count_register_all",
+  y_var      = "count_children_present",
   na_action  = "warn"
 )
+
+# 5. Define Shared Optimization Configurations
+TARGET_N   <- 5000
+MAX_BUDGET <- 1400000
+GA_SEED    <- 42
+POP_SIZE   <- 20
+MAX_ITER   <- 25
+RUN_LIMIT  <- 8
+joint_ga_max_candidate_c <- 1000
+
+cost_clust <- 2500
+cost_unit <- 100
+frame_ch <- frame_c(clean_data, MAX_BUDGET, cost_unit, cost_clust, TARGET_N)
 
 # 4. Compute structural sampling frame rules & suggestions
 cat("\n[2/4] Generating stratum metrics and initial suggestions...")
 frame <- prepare_sampling_frame(
   data         = clean_data,
-  y_var        = "count_register_all",
-  total_c      = 1000,
-  cost_cluster = 10000,  
-  cost_unit    = 200   
+  y_var        = "count_children_present",
+  total_c      = frame_ch,
+  cost_cluster = cost_clust,  
+  cost_unit    = cost_unit   
 )
 
-# 5. Define Shared Optimization Configurations
-TARGET_N   <- 10000
-MAX_BUDGET <- 1000000
-GA_SEED    <- 42
-POP_SIZE   <- 80
-MAX_ITER   <- 300
-RUN_LIMIT  <- 30
+strata <- frame$strata
+
+strata # check
+
+L <- nrow(strata)
+
+lower_c <- rep(1L, L)
+upper_c <- strata$C_h
+
+lower_k <- rep(1L, L)
+upper_k <- rep(TARGET_N, L)
+
+joint_start <- find_feasible_joint_start(
+  strata = strata,
+  total_n = TARGET_N,
+  max_cost = MAX_BUDGET,
+  lower_c = lower_c,
+  upper_c = upper_c,
+  lower_k = lower_k,
+  upper_k = upper_k,
+  max_candidate_c = min(joint_ga_max_candidate_c, frame_ch)
+)
+
+joint_starting_suggestions <- joint_start$all_starts |>
+  dplyr::rename(
+    repaired_sample_size_gap = sample_size_gap,
+    repaired_feasible = feasible
+  )
+
+default_start <- joint_starting_suggestions |>
+  dplyr::filter(starting_suggestion == "3. Neyman proportional")
 
 # 6. Execute Baseline Joint Algorithm (2L Dimensions)
 cat("\n[3/4] Running Baseline Joint GA (2L Dimensions)... Please wait.\n")
@@ -57,7 +96,7 @@ time_joint <- system.time({
     maxiter    = MAX_ITER,
     run        = RUN_LIMIT,
     seed       = GA_SEED,
-    suggestion = c(frame$c_h, rep(round(TARGET_N / sum(frame$c_h)), nrow(frame$strata))) 
+    suggestion = c(default_start$repaired_c_h, default_start$repaired_k_h)
   )
 })
 
@@ -137,4 +176,5 @@ print_benchmark_summary <- function(res_joint, res_decoupled, time_joint, time_d
   }
   cat("========================================================================\n")
 }
+
 print_benchmark_summary(res_joint, res_decoupled, time_joint, time_decoupled)

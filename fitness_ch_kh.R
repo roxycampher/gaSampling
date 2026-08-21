@@ -6,8 +6,11 @@ fitness_ckh_constrained <- function(x,
                                     min_k_h = 1L,
                                     max_c_h = NULL,
                                     max_k_h = NULL,
-                                    sample_gap_penalty = 1e5,
-                                    cost_penalty = 1e3) {
+                                    sample_shortfall_penalty = 1e5,
+                                    cost_over_penalty = 1e5,
+                                    budget_underuse_penalty = 1e3,
+                                    min_budget_use = 0.95,
+                                    budget_tol = 0.02) {
   
   L <- nrow(strata)
   
@@ -33,7 +36,9 @@ fitness_ckh_constrained <- function(x,
     upper_k = max_k_h,
     max_cost = max_cost,
     cost_cluster = strata$cost_cluster,
-    cost_unit = strata$cost_unit
+    cost_unit = strata$cost_unit,
+    min_budget_use = min_budget_use,
+    budget_tol = budget_tol
   )
   
   c_h <- repaired$c_h
@@ -43,14 +48,16 @@ fitness_ckh_constrained <- function(x,
   constraint_check <- check_constraints(
     k_h = k_h,
     c_h = c_h,
-    total_n = NULL,
+    total_n = total_n,
     max_cost = max_cost,
     cost_cluster = strata$cost_cluster,
     cost_unit = strata$cost_unit,
     min_clusters = min_c_h,
     min_units = min_k_h,
     max_clusters = max_c_h,
-    max_units = max_k_h
+    max_units = max_k_h,
+    min_budget_use = min_budget_use,
+    budget_tol = budget_tol
   )
   
 
@@ -72,8 +79,14 @@ fitness_ckh_constrained <- function(x,
     sigma2_wh = strata$sigma2_wh
   )
   
-  sample_penalty <- sample_gap_penalty * abs(repaired$sample_size_gap)
-  over_cost <- max(0, constraint_check$total_cost - max_cost)
+  sample_shortfall <- max(0, total_n - constraint_check$total_n)
+  upper_cost_bound <- max_cost * (1 + budget_tol)
+  lower_cost_bound <- max_cost * min_budget_use
+  over_cost <- max(0, constraint_check$total_cost - upper_cost_bound)
+  budget_underuse <- max(0, lower_cost_bound - constraint_check$total_cost)
   
-  -variance - sample_penalty - cost_penalty * over_cost
+  -variance -
+    sample_shortfall_penalty * sample_shortfall -
+    cost_over_penalty * over_cost -
+    budget_underuse_penalty * budget_underuse
 }

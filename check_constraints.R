@@ -8,7 +8,9 @@ check_constraints <- function(c_h,
                               min_clusters = 1,
                               min_units = 1,
                               max_clusters = NULL,
-                              max_units = NULL) {
+                              max_units = NULL,
+                              min_budget_use = 0.95,
+                              budget_tol = 0.02) {
   
   # Compute stratum sample sizes
   n_h <- c_h * k_h
@@ -29,22 +31,26 @@ check_constraints <- function(c_h,
     unit_ok <- unit_ok && all(k_h <= max_units)
   }
   
-  # Check total sample size constraint
+  # Check total sample size constraint (LOWER BOUND!!)
   if (!is.null(total_n)) {
     sample_size_ok <- sum(n_h) >= total_n
   } else {
     sample_size_ok <- TRUE # if no total sample size was set
   }
   
-  # Check cost constraint
+  # Check cost constraint (FORCE A STRICTER LB WITH A SMALL UB tolerance)
   if (!is.null(max_cost)) {
     
     if (is.null(cost_cluster) || is.null(cost_unit)) {
       stop("cost_cluster and cost_unit must be supplied when max_cost is used.")
     }
     
-    total_cost <- sum(cost_cluster * c_h + cost_unit * c_h * k_h)
-    cost_ok <- total_cost <= max_cost # max out cost
+    total_cost <- cost_twostage(c_h, k_h, cost_cluster, cost_unit)
+    
+    lower_cost_ok <- total_cost >= max_cost * min_budget_use
+    upper_cost_ok <- total_cost <= max_cost * (1 + budget_tol)
+    
+    cost_ok <- lower_cost_ok && upper_cost_ok
     
   } else { # default if left null
     total_cost <- NA
