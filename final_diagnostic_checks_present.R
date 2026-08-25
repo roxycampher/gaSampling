@@ -6,10 +6,10 @@ library(GA)
 library(ggplot2)
 library(tidyr)
 
-joint_ga_pop_size <- 20
-joint_ga_maxiter <- 25
-joint_ga_run <- 8
-joint_ga_seed_count <- 3 # The number of multiple runs - increase to at least 25 for final check for presentation
+joint_ga_pop_size <- 200
+joint_ga_maxiter <- 500
+joint_ga_run <- 50
+joint_ga_seed_count <- 100 # The number of multiple runs - increase to at least 25 for final check for presentation
 joint_ga_max_candidate_c <- 1000
 
 source("variance_twostage.R")
@@ -292,37 +292,37 @@ starting_suggestion_diagnostics <- joint_starting_suggestions |>
     .groups = "drop"
   )
 
-joint_starting_suggestions
-starting_suggestion_diagnostics
+#joint_starting_suggestions
+#starting_suggestion_diagnostics
 
-default_start <- joint_starting_suggestions |>
-  dplyr::filter(starting_suggestion == "3. Neyman proportional")
+# default_start <- joint_starting_suggestions |>
+#   dplyr::filter(starting_suggestion == "3. Neyman proportional")
 
 # One run with Neyman proportional c_h allocation 
-ga_result <- allocate_twostage_ga_joint(
-  strata = strata,
-  total_n = total_n,
-  max_cost = max_cost,
-  popSize = joint_ga_pop_size,
-  maxiter = joint_ga_maxiter,
-  run = joint_ga_run,
-  seed = 123,
-  suggestion = c(default_start$repaired_c_h, default_start$repaired_k_h)
-)
+#ga_result <- allocate_twostage_ga_joint(
+#  strata = strata,
+#  total_n = total_n,
+#  max_cost = max_cost,
+#  popSize = joint_ga_pop_size,
+#  maxiter = joint_ga_maxiter,
+#  run = joint_ga_run,
+#  seed = 123,
+#  suggestion = c(default_start$repaired_c_h, default_start$repaired_k_h)
+#)
 
-ga_result$allocation
-ga_result$variance
-ga_result$total_n
-ga_result$total_cost
-ga_result$feasible
-ga_result$constraint_check
-ga_result$repair
+# ga_result$allocation
+# ga_result$variance
+# ga_result$total_n
+# ga_result$total_cost
+# ga_result$feasible
+# ga_result$constraint_check
+# ga_result$repair
 
 ################################################################################
 #                    MULTIPLE RUN TESTS
 ################################################################################
 
-set.seed(2026)
+set.seed(123)
 
 strata <- strata
 total_n <- total_n
@@ -508,6 +508,7 @@ dir.create(
 
 # Add useful stability measures
 best_variance <- min(run_summary$variance, na.rm = TRUE)
+mean_variance <- mean(run_summary$variance, na.rm = TRUE)
 
 run_summary <- run_summary |>
   dplyr::group_by(starting_suggestion) |>
@@ -604,7 +605,7 @@ variance_seed_plot <- ggplot(
   )
 ) +
   geom_hline(
-    yintercept = best_variance,
+    yintercept = mean_variance,
     linetype = "dashed",
     linewidth = 0.7
   ) +
@@ -627,7 +628,7 @@ variance_seed_plot <- ggplot(
   labs(
     title = "Joint GA stability across random seeds",
     subtitle = paste0(
-      "Dashed line shows the best variance: ",
+      "Dashed line shows the mean variance: ",
       round(best_variance, 6)
     ),
     x = "Random seed",
