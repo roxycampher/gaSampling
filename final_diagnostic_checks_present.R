@@ -5,6 +5,7 @@ library(readr)
 library(GA)
 library(ggplot2)
 library(tidyr)
+library(parallel)
 
 joint_ga_pop_size <- 200
 joint_ga_maxiter <- 500
@@ -12,6 +13,18 @@ joint_ga_run <- 50
 joint_ga_seed_count <- 100 # The number of multiple runs - increase to at least 25 for final check for presentation
 # Because there are 4 c_h starting solutions, there will be 4 * joint_ga_seed_count runs of the GA
 joint_ga_max_candidate_c <- 1000
+
+# ------------------------------------------------------------
+# HPC execution settings
+# ------------------------------------------------------------
+# Each starting_suggestion x seed combination is checkpointed to its own
+# .rds file here. If the job dies (walltime, node failure) it can simply
+# be resubmitted: completed combinations are reloaded instead of rerun.
+# NOTE: if you change total_n, max_cost, joint_ga_pop_size/maxiter/run,
+# or the strata frame, clear this directory first, or old checkpoints
+# from a different configuration will be silently reused.
+checkpoint_dir <- "joint_ga_checkpoints"
+dir.create(checkpoint_dir, showWarnings = FALSE, recursive = TRUE)
 
 source("variance_twostage.R")
 source("cost_twostage.R")
@@ -376,28 +389,119 @@ ga_run_grid <- expand.grid(
   stringsAsFactors = FALSE
 )
 
-ga_runs <- lapply(seq_len(nrow(ga_run_grid)), function(i) {
+# Only the fields needed downstream (run_summary + the stability plots)
+# are kept. The full object returned by allocate_twostage_ga_joint embeds
+# the GA population/fitness history and is discarded immediately after
+# extraction, so it is never accumulated across all 400 runs.
+extract_light_result <- function(result) {
+  list(
+    variance = result$variance,
+    total_n = result$total_n,
+    total_c = sum(result$allocation$c_h),
+    total_cost = result$total_cost,
+    feasible = result$feasible,
+    sample_size_gap = result$repair$sample_size_gap,
+    repair_iterations = result$repair$iterations,
+    allocation = result$allocation
+  )
+}
+
+# Runs (or reloads, if already checkpointed) a single
+# starting_suggestion x seed combination.
+run_one_case <- function(starting_suggestion, seed) {
+  safe_name <- gsub("[^A-Za-z0-9]+", "_", starting_suggestion)
+  ckpt_file <- file.path(
+    checkpoint_dir,
+    sprintf("run_%s_seed%03d.rds", safe_name, seed)
+  )
+
+  if (file.exists(ckpt_file)) {
+    return(readRDS(ckpt_file))
+  }
+
   start_i <- joint_starting_suggestions |>
-    dplyr::filter(starting_suggestion == ga_run_grid$starting_suggestion[i])
-  
-  allocate_twostage_ga_joint(
+    dplyr::filter(starting_suggestion == !!starting_suggestion)
+
+  result <- allocate_twostage_ga_joint(
     strata = strata,
     total_n = total_n,
     max_cost = max_cost,
     popSize = joint_ga_pop_size,
     maxiter = joint_ga_maxiter,
     run = joint_ga_run,
-    seed = ga_run_grid$seed[i],
+    seed = seed,
     suggestion = c(start_i$repaired_c_h, start_i$repaired_k_h)
   )
-})
 
-run_summary <- dplyr::bind_rows(
-  lapply(seq_along(ga_runs), function(i) {
-    summarise_joint_ga_result(
-      result = ga_runs[[i]],
+  light <- extract_light_result(result)
+  light$starting_suggestion <- starting_suggestion
+  light$seed <- seed
+  rm(result)
+
+  saveRDS(light, ckpt_file)
+  light
+}
+
+# Number of parallel workers: respect the Slurm allocation if present,
+# otherwise fall back to (detected cores - 1), minimum 1.
+n_cores <- suppressWarnings(as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", unset = NA)))
+if (is.na(n_cores)) {
+  n_cores <- max(1L, parallel::detectCores() - 1L)
+}
+message("Running joint GA diagnostics on ", n_cores, " core(s).")
+
+if (.Platform$OS.type == "unix") {
+  all_light_results <- parallel::mclapply(
+    seq_len(nrow(ga_run_grid)),
+    function(i) {
+      run_one_case(
+        starting_suggestion = ga_run_grid$starting_suggestion[i],
+        seed = ga_run_grid$seed[i]
+      )
+    },
+    mc.cores = n_cores,
+    mc.preschedule = FALSE
+  )
+} else {
+  # mclapply forks and is Linux/macOS-only; fall back to a serial,
+  # still-checkpointed loop if ever run on Windows.
+  all_light_results <- lapply(
+    seq_len(nrow(ga_run_grid)),
+    function(i) {
+      run_one_case(
+        starting_suggestion = ga_run_grid$starting_suggestion[i],
+        seed = ga_run_grid$seed[i]
+      )
+    }
+  )
+}
+
+# mclapply returns a try-error object for a crashed worker instead of
+# stopping the whole job; detect and retry those serially so a single
+# bad run doesn't sink the batch.
+failed <- vapply(all_light_results, function(x) inherits(x, "try-error"), logical(1))
+if (any(failed)) {
+  message(sum(failed), " run(s) failed in parallel and will be retried serially.")
+  for (i in which(failed)) {
+    all_light_results[[i]] <- run_one_case(
       starting_suggestion = ga_run_grid$starting_suggestion[i],
       seed = ga_run_grid$seed[i]
+    )
+  }
+}
+
+run_summary <- dplyr::bind_rows(
+  lapply(all_light_results, function(x) {
+    data.frame(
+      starting_suggestion = x$starting_suggestion,
+      seed = x$seed,
+      variance = x$variance,
+      total_n = x$total_n,
+      total_c = x$total_c,
+      total_cost = x$total_cost,
+      feasible = x$feasible,
+      sample_size_gap = x$sample_size_gap,
+      repair_iterations = x$repair_iterations
     )
   })
 )
@@ -511,7 +615,7 @@ ga_vs_basic_variance_comparison <- dplyr::bind_rows(
 # Best GA run
 best_index <- which.min(run_summary$variance)
 
-best_run <- ga_runs[[best_index]]
+best_run <- all_light_results[[best_index]]
 
 best_run$allocation
 best_run$variance
@@ -521,9 +625,9 @@ best_run$feasible
 
 # Average allocations across runs
 allocations <- dplyr::bind_rows(
-  lapply(seq_along(ga_runs), function(i) {
+  lapply(seq_along(all_light_results), function(i) {
     add_joint_allocation_context(
-      allocation = ga_runs[[i]]$allocation,
+      allocation = all_light_results[[i]]$allocation,
       starting_suggestion = ga_run_grid$starting_suggestion[i],
       seed = ga_run_grid$seed[i],
       strata = strata
@@ -1341,4 +1445,3 @@ message(
   "Stability plots and summaries saved to: ",
   stability_output_dir
 )
-
