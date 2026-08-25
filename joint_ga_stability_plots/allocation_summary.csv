@@ -1,10 +1,37 @@
-"stratum","mean_c_h","sd_c_h","min_c_h","max_c_h","mean_k_h","sd_k_h","min_k_h","max_k_h","mean_n_h","sd_n_h","min_n_h","max_n_h"
-"Eastern Cape",5.68,0.802080627701064,5,8,12.92,6.59494756107532,8,35,76.56,48.2174588021116,40,245
-"Free State",11.88,1.73973178009332,4,14,6.32,4.65223960403302,1,19,69.76,45.4617788184023,12,120
-"Gauteng",8.24,0.522812904711937,8,10,17.12,9.34219817102306,9,36,142.76,80.7513054590038,72,306
-"KwaZulu-Natal",8.12,0.33166247903554,8,9,11.84,5.12900250211156,8,27,96.8,43.9507299901454,64,216
-"Limpopo",7.12,0.832666399786453,5,10,12.6,5.43139024560011,8,26,88.6,35.2940032677885,56,161
-"Mpumalanga",11.08,0.759385716659635,9,14,8.76,4.39014046851958,1,20,95.28,44.4967414537289,11,198
-"North West",12.92,1.11504857891185,8,15,5.52,4.12431812546026,1,18,68.28,44.365452024445,13,144
-"Northern Cape",15.24,2.84722086720835,2,16,9.4,9,1,24,136.76,136.974231153163,13,288
-"Western Cape",9.6,0.866025403784439,8,11,13.6,8,6,32,125.2,62.1738154960216,60,256
+"starting_suggestion","stratum","mean_c_h","sd_c_h","min_c_h","max_c_h","mean_k_h","sd_k_h","min_k_h","max_k_h","mean_n_h","sd_n_h","min_n_h","max_n_h"
+"1. Proportional to stratum size","Eastern Cape",40,0,40,40,13,0,13,13,520,0,520,520
+"1. Proportional to stratum size","Free State",23,7.07106781186548,18,28,13,0,13,13,299,91.9238815542512,234,364
+"1. Proportional to stratum size","Gauteng",85,0,85,85,16.5,0.707106781186548,16,17,1402.5,60.1040764008565,1360,1445
+"1. Proportional to stratum size","KwaZulu-Natal",69,0,69,69,13,0,13,13,897,0,897,897
+"1. Proportional to stratum size","Limpopo",48,0,48,48,13,0,13,13,624,0,624,624
+"1. Proportional to stratum size","Mpumalanga",27,0,27,27,13,0,13,13,351,0,351,351
+"1. Proportional to stratum size","North West",22,0,22,22,13,0,13,13,286,0,286,286
+"1. Proportional to stratum size","Northern Cape",8,0,8,8,14,0,14,14,112,0,112,112
+"1. Proportional to stratum size","Western Cape",41,0,41,41,13,0,13,13,533,0,533,533
+"2. Proportional to between-cluster SD","Eastern Cape",32,0,32,32,14,0,14,14,448,0,448,448
+"2. Proportional to between-cluster SD","Free State",42,0,42,42,13,0,13,13,546,0,546,546
+"2. Proportional to between-cluster SD","Gauteng",37,0,37,37,13,0,13,13,481,0,481,481
+"2. Proportional to between-cluster SD","KwaZulu-Natal",36,0,36,36,13,0,13,13,468,0,468,468
+"2. Proportional to between-cluster SD","Limpopo",33,0,33,33,13,0,13,13,429,0,429,429
+"2. Proportional to between-cluster SD","Mpumalanga",49,0,49,49,19,0,19,19,931,0,931,931
+"2. Proportional to between-cluster SD","North West",47,1.4142135623731,46,48,13,0,13,13,611,18.3847763108502,598,624
+"2. Proportional to between-cluster SD","Northern Cape",44,0,44,44,13,0,13,13,572,0,572,572
+"2. Proportional to between-cluster SD","Western Cape",41,0,41,41,13,0,13,13,533,0,533,533
+"3. Neyman proportional","Eastern Cape",34,0,34,34,13,0,13,13,442,0,442,442
+"3. Neyman proportional","Free State",24,5.65685424949238,20,28,13,0,13,13,312,73.5391052434009,260,364
+"3. Neyman proportional","Gauteng",85,0,85,85,17,0,17,17,1445,0,1445,1445
+"3. Neyman proportional","KwaZulu-Natal",62,0,62,62,13,0,13,13,806,0,806,806
+"3. Neyman proportional","Limpopo",42,0,42,42,13,0,13,13,546,0,546,546
+"3. Neyman proportional","Mpumalanga",31,0,31,31,13,0,13,13,403,0,403,403
+"3. Neyman proportional","North West",27,0,27,27,13,0,13,13,351,0,351,351
+"3. Neyman proportional","Northern Cape",9,0,9,9,14,0,14,14,126,0,126,126
+"3. Neyman proportional","Western Cape",48,0,48,48,13,0,13,13,624,0,624,624
+"4. Equal c_h allocation","Eastern Cape",39,1.4142135623731,38,40,21,0,21,21,819,29.698484809835,798,840
+"4. Equal c_h allocation","Free State",37,4.24264068711928,34,40,13,0,13,13,481,55.1543289325507,442,520
+"4. Equal c_h allocation","Gauteng",40,0,40,40,14.5,2.12132034355964,13,16,580,84.8528137423857,520,640
+"4. Equal c_h allocation","KwaZulu-Natal",40,0,40,40,13,0,13,13,520,0,520,520
+"4. Equal c_h allocation","Limpopo",40,0,40,40,13,0,13,13,520,0,520,520
+"4. Equal c_h allocation","Mpumalanga",40,0,40,40,13,0,13,13,520,0,520,520
+"4. Equal c_h allocation","North West",40,0,40,40,13,0,13,13,520,0,520,520
+"4. Equal c_h allocation","Northern Cape",40,0,40,40,13,0,13,13,520,0,520,520
+"4. Equal c_h allocation","Western Cape",40,0,40,40,13,0,13,13,520,0,520,520

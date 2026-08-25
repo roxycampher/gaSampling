@@ -1,0 +1,29 @@
+"starting_suggestion","metric","value"
+"3. Neyman proportional","Feasibility rate",1
+"3. Neyman proportional","Minimum variance",0.57635598205269
+"3. Neyman proportional","Median variance",0.580933108443985
+"3. Neyman proportional","Mean variance",0.580933108443985
+"3. Neyman proportional","SD of variance",0.00647303421926487
+"3. Neyman proportional","CV of variance (%)",1.11424777227842
+"3. Neyman proportional","Maximum relative gap (%)",1.58829838982267
+"1. Proportional to stratum size","Feasibility rate",1
+"1. Proportional to stratum size","Minimum variance",0.580402615948804
+"1. Proportional to stratum size","Median variance",0.585925792977168
+"1. Proportional to stratum size","Mean variance",0.585925792977168
+"1. Proportional to stratum size","SD of variance",0.00781095186090025
+"1. Proportional to stratum size","CV of variance (%)",1.33309575282763
+"1. Proportional to stratum size","Maximum relative gap (%)",1.9032226515159
+"4. Equal c_h allocation","Feasibility rate",1
+"4. Equal c_h allocation","Minimum variance",0.768541031239169
+"4. Equal c_h allocation","Median variance",0.772835397891446
+"4. Equal c_h allocation","Mean variance",0.772835397891446
+"4. Equal c_h allocation","SD of variance",0.0060731515614532
+"4. Equal c_h allocation","CV of variance (%)",0.78582730268603
+"4. Equal c_h allocation","Maximum relative gap (%)",1.11753737997648
+"2. Proportional to between-cluster SD","Feasibility rate",1
+"2. Proportional to between-cluster SD","Minimum variance",0.834239010079376
+"2. Proportional to between-cluster SD","Median variance",0.834754194659932
+"2. Proportional to between-cluster SD","Mean variance",0.834754194659932
+"2. Proportional to between-cluster SD","SD of variance",0.000728581020948252
+"2. Proportional to between-cluster SD","CV of variance (%)",0.0872809056377448
+"2. Proportional to between-cluster SD","Maximum relative gap (%)",0.12351006709871

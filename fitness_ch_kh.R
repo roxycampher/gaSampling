@@ -79,14 +79,11 @@ fitness_ckh_constrained <- function(x,
     sigma2_wh = strata$sigma2_wh
   )
   
-  sample_shortfall <- max(0, total_n - constraint_check$total_n)
-  upper_cost_bound <- max_cost * (1 + budget_tol)
-  lower_cost_bound <- max_cost * min_budget_use
-  over_cost <- max(0, constraint_check$total_cost - upper_cost_bound)
-  budget_underuse <- max(0, lower_cost_bound - constraint_check$total_cost)
+  # sample_shortfall <- max(0, total_n - constraint_check$total_n)
+  # upper_cost_bound <- max_cost * (1 + budget_tol)
+  # lower_cost_bound <- max_cost * min_budget_use
+  # over_cost <- max(0, constraint_check$total_cost - upper_cost_bound)
+  # budget_underuse <- max(0, lower_cost_bound - constraint_check$total_cost)
   
-  -variance -
-    sample_shortfall_penalty * sample_shortfall -
-    cost_over_penalty * over_cost -
-    budget_underuse_penalty * budget_underuse
+  -variance
 }

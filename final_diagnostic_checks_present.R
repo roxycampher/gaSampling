@@ -10,6 +10,7 @@ joint_ga_pop_size <- 200
 joint_ga_maxiter <- 500
 joint_ga_run <- 50
 joint_ga_seed_count <- 100 # The number of multiple runs - increase to at least 25 for final check for presentation
+# Because there are 4 c_h starting solutions, there will be 4 * joint_ga_seed_count runs of the GA
 joint_ga_max_candidate_c <- 1000
 
 source("variance_twostage.R")
@@ -79,7 +80,9 @@ summarise_basic_allocation <- function(benchmark_name,
     lower_c = lower_c,
     upper_c = upper_c,
     lower_k = lower_k,
-    upper_k = upper_k
+    upper_k = upper_k,
+    cost_cluster = strata$cost_cluster,
+    cost_unit = strata$cost_unit
   )
   
   allocation <- data.frame(
@@ -143,7 +146,7 @@ summarise_basic_allocation <- function(benchmark_name,
   )
 }
 
-# THE HARD CODED EQUAL AND PROPORTIONAL ALLOCATIONS
+# THE HARD CODED EQUAL, PROPORTIONAL AND NEYMAN ALLOCATIONS
 build_basic_allocation_benchmarks <- function(strata,
                                               total_c,
                                               total_n,
@@ -153,7 +156,7 @@ build_basic_allocation_benchmarks <- function(strata,
                                               lower_k,
                                               upper_k) {
   equal_c_h <- allocate_ch_by_weight(
-    weights = rep(1, nrow(strata)),
+    weights = rep(1, nrow(strata)), # equal weights
     total_c = total_c,
     upper = upper_c,
     lower = lower_c
@@ -174,6 +177,26 @@ build_basic_allocation_benchmarks <- function(strata,
   proportional_k_h <- pmax(
     lower_k,
     round((total_n * strata$W_h) / proportional_c_h)
+  )
+  
+  neyman_sd <- sqrt(strata$sigma2_bh + strata$sigma2_wh)
+  neyman_weights <- strata$N_h * neyman_sd
+  
+  neyman_c_h <- allocate_ch_by_weight(
+    weights = neyman_weights,
+    total_c = total_c,
+    upper = upper_c,
+    lower = lower_c
+  )
+  
+  neyman_n_h <- pmax(
+    lower_c * lower_k,
+    round(total_n * neyman_weights / sum(neyman_weights))
+  )
+  
+  neyman_k_h <- pmax(
+    lower_k,
+    round(neyman_n_h / neyman_c_h)
   )
   
   equal_benchmark <- summarise_basic_allocation(
@@ -202,14 +225,29 @@ build_basic_allocation_benchmarks <- function(strata,
     upper_k = upper_k
   )
   
+  neyman_benchmark <- summarise_basic_allocation(
+    benchmark_name = "Basic Neyman allocation",
+    c_h = neyman_c_h,
+    k_h = neyman_k_h,
+    strata = strata,
+    total_n = total_n,
+    max_cost = max_cost,
+    lower_c = lower_c,
+    upper_c = upper_c,
+    lower_k = lower_k,
+    upper_k = upper_k
+  )
+  
   list(
     summary = dplyr::bind_rows(
       equal_benchmark$summary,
-      proportional_benchmark$summary
+      proportional_benchmark$summary,
+      neyman_benchmark$summary
     ),
     allocations = dplyr::bind_rows(
       equal_benchmark$allocation,
-      proportional_benchmark$allocation
+      proportional_benchmark$allocation,
+      neyman_benchmark$allocation
     )
   )
 }
@@ -267,7 +305,7 @@ joint_start <- find_feasible_joint_start(
 )
 
 total_c <- joint_start$total_c
-total_c
+total_c 
 
 # Build the four starting suggestions used in the diagnostic comparisons:
 # three proportional c_h allocations and one equal c_h allocation. These are
@@ -366,12 +404,12 @@ run_summary <- dplyr::bind_rows(
 
 run_summary
 
-summary(run_summary$variance)
+#summary(run_summary$variance)
 
-min(run_summary$variance)
-mean(run_summary$variance)
-sd(run_summary$variance) # should be small if the solution is stable
-sum(run_summary$feasible)
+#min(run_summary$variance)
+#mean(run_summary$variance)
+#sd(run_summary$variance) # should be small if the solution is stable
+#sum(run_summary$feasible)
 
 suggestion_run_summary <- run_summary |>
   dplyr::group_by(starting_suggestion) |>
@@ -410,6 +448,16 @@ basic_allocation_benchmarks <- build_basic_allocation_benchmarks(
 basic_allocation_summary <- basic_allocation_benchmarks$summary
 basic_allocation_allocations <- basic_allocation_benchmarks$allocations
 
+basic_benchmark_variances <- basic_allocation_summary |>
+  dplyr::transmute(
+    benchmark = method,
+    variance = mean_variance,
+    total_cost = mean_total_cost,
+    sample_size_gap = mean_sample_size_gap,
+    feasible = feasible_runs == 1L
+  ) |>
+  dplyr::arrange(variance)
+
 ga_vs_basic_variance_comparison <- dplyr::bind_rows(
   suggestion_run_summary |>
     dplyr::transmute(
@@ -444,13 +492,21 @@ ga_vs_basic_variance_comparison <- dplyr::bind_rows(
         mean_variance[method == "Basic stratum proportional allocation"][1] -
           mean_variance
       ) /
-      mean_variance[method == "Basic stratum proportional allocation"][1]
+      mean_variance[method == "Basic stratum proportional allocation"][1],
+    improvement_vs_basic_neyman_pct =
+      100 *
+      (
+        mean_variance[method == "Basic Neyman allocation"][1] -
+          mean_variance
+      ) /
+      mean_variance[method == "Basic Neyman allocation"][1]
   ) |>
   dplyr::arrange(mean_variance)
 
-basic_allocation_summary
-basic_allocation_allocations
-ga_vs_basic_variance_comparison
+#basic_allocation_summary
+#basic_allocation_allocations
+#basic_benchmark_variances
+#ga_vs_basic_variance_comparison
 
 # Best GA run
 best_index <- which.min(run_summary$variance)
@@ -493,7 +549,7 @@ allocation_summary <- allocations |>
     .groups = "drop"
   )
 
-allocation_summary
+#allocation_summary
 
 ################################################################################
 #                         STABILITY PLOTS
@@ -629,7 +685,7 @@ variance_seed_plot <- ggplot(
     title = "Joint GA stability across random seeds",
     subtitle = paste0(
       "Dashed line shows the mean variance: ",
-      round(best_variance, 6)
+      round(mean_variance, 6)
     ),
     x = "Random seed",
     y = "Estimated variance",
@@ -856,6 +912,43 @@ ggsave(
   plot = ga_vs_basic_variance_plot,
   width = 10,
   height = 6,
+  dpi = 300
+)
+
+
+# ============================================================
+# 4c. Basic benchmark variance histogram
+# ============================================================
+
+basic_benchmark_variance_histogram <- ggplot(
+  basic_benchmark_variances,
+  aes(
+    x = reorder(benchmark, variance),
+    y = variance,
+    fill = benchmark
+  )
+) +
+  geom_col(width = 0.7, show.legend = FALSE) +
+  coord_flip() +
+  labs(
+    title = "Basic benchmark variances",
+    subtitle = "Closed-form non-GA allocations used as comparison benchmarks",
+    x = NULL,
+    y = "Estimated variance"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.minor = element_blank())
+
+basic_benchmark_variance_histogram
+
+ggsave(
+  filename = file.path(
+    stability_output_dir,
+    "04c_basic_benchmark_variance_histogram.png"
+  ),
+  plot = basic_benchmark_variance_histogram,
+  width = 9,
+  height = 5,
   dpi = 300
 )
 
@@ -1204,6 +1297,15 @@ write.csv(
   file.path(
     stability_output_dir,
     "basic_allocation_allocations.csv"
+  ),
+  row.names = FALSE
+)
+
+write.csv(
+  basic_benchmark_variances,
+  file.path(
+    stability_output_dir,
+    "basic_benchmark_variances.csv"
   ),
   row.names = FALSE
 )

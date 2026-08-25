@@ -139,7 +139,7 @@ find_feasible_joint_start <- function(strata,
         lower = lower_c
       )
 
-      initial_k_h <- rep(
+      initial_k_h <- rep( # set the k_h to equal for the c_h allocation suggestions
         max(1L, floor(total_n / sum(initial_c_h))),
         L
       )

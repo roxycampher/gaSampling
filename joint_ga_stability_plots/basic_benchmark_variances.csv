@@ -1,0 +1,4 @@
+"benchmark","variance","total_cost","sample_size_gap","feasible"
+"Basic Neyman allocation",0.587537736131297,1395100,1,TRUE
+"Basic stratum proportional allocation",0.592336411167426,1395100,1,TRUE
+"Basic equal allocation",0.777129764543724,1400000,0,TRUE

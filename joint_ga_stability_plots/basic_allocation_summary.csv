@@ -1,0 +1,4 @@
+"comparison_type","method","number_of_runs","feasible_runs","feasibility_rate","minimum_variance","median_variance","mean_variance","maximum_variance","sd_variance","cv_variance_pct","mean_total_cost","mean_sample_size_gap","mean_repair_iterations"
+"Basic allocation","Basic equal allocation",1,1,1,0.777129764543724,0.777129764543724,0.777129764543724,0.777129764543724,NA,NA,1400000,0,3
+"Basic allocation","Basic stratum proportional allocation",1,1,1,0.592336411167426,0.592336411167426,0.592336411167426,0.592336411167426,NA,NA,1395100,1,4
+"Basic allocation","Basic Neyman allocation",1,1,1,0.587537736131297,0.587537736131297,0.587537736131297,0.587537736131297,NA,NA,1395100,1,4

@@ -1,0 +1,28 @@
+"benchmark","stratum","c_h","k_h","n_h"
+"Basic equal allocation","Eastern Cape",40,21,840
+"Basic equal allocation","Free State",40,13,520
+"Basic equal allocation","Gauteng",40,13,520
+"Basic equal allocation","KwaZulu-Natal",40,13,520
+"Basic equal allocation","Limpopo",40,13,520
+"Basic equal allocation","Mpumalanga",40,13,520
+"Basic equal allocation","North West",40,13,520
+"Basic equal allocation","Northern Cape",40,13,520
+"Basic equal allocation","Western Cape",40,13,520
+"Basic stratum proportional allocation","Eastern Cape",42,14,588
+"Basic stratum proportional allocation","Free State",18,14,252
+"Basic stratum proportional allocation","Gauteng",85,14,1190
+"Basic stratum proportional allocation","KwaZulu-Natal",67,13,871
+"Basic stratum proportional allocation","Limpopo",48,15,720
+"Basic stratum proportional allocation","Mpumalanga",27,14,378
+"Basic stratum proportional allocation","North West",22,14,308
+"Basic stratum proportional allocation","Northern Cape",8,15,120
+"Basic stratum proportional allocation","Western Cape",41,14,574
+"Basic Neyman allocation","Eastern Cape",32,12,384
+"Basic Neyman allocation","Free State",20,14,280
+"Basic Neyman allocation","Gauteng",94,14,1316
+"Basic Neyman allocation","KwaZulu-Natal",60,14,840
+"Basic Neyman allocation","Limpopo",44,14,616
+"Basic Neyman allocation","Mpumalanga",32,14,448
+"Basic Neyman allocation","North West",23,14,322
+"Basic Neyman allocation","Northern Cape",7,15,105
+"Basic Neyman allocation","Western Cape",46,15,690

@@ -1,0 +1,5 @@
+"starting_suggestion","total_initial_c","total_repaired_c","total_repaired_n","total_repaired_cost","sample_size_gap","repaired_exactly","repaired_feasible","repair_iterations"
+"1. Proportional to stratum size",360,358,5002,1395200,2,TRUE,TRUE,3
+"2. Proportional to between-cluster SD",360,360,5006,1400600,6,TRUE,TRUE,4
+"3. Neyman proportional",360,358,5003,1395300,3,TRUE,TRUE,3
+"4. Equal c_h allocation",360,360,5000,1400000,0,TRUE,TRUE,3
