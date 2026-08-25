@@ -6,10 +6,10 @@ library(GA)
 library(ggplot2)
 library(tidyr)
 
-joint_ga_pop_size <- 20
-joint_ga_maxiter <- 25
-joint_ga_run <- 8
-joint_ga_seed_count <- 3 # The number of multiple runs - increase to at least 25 for final check for presentation
+joint_ga_pop_size <- 200
+joint_ga_maxiter <- 500
+joint_ga_run <- 50
+joint_ga_seed_count <- 100 # The number of multiple runs - increase to at least 25 for final check for presentation
 joint_ga_max_candidate_c <- 1000
 
 source("variance_twostage.R")
@@ -322,7 +322,7 @@ ga_result$repair
 #                    MULTIPLE RUN TESTS
 ################################################################################
 
-set.seed(2026)
+set.seed(123)
 
 strata <- strata
 total_n <- total_n
@@ -508,6 +508,7 @@ dir.create(
 
 # Add useful stability measures
 best_variance <- min(run_summary$variance, na.rm = TRUE)
+mean_variance <- mean(run_summary$variance, na.rm = TRUE)
 
 run_summary <- run_summary |>
   dplyr::group_by(starting_suggestion) |>
@@ -604,7 +605,7 @@ variance_seed_plot <- ggplot(
   )
 ) +
   geom_hline(
-    yintercept = best_variance,
+    yintercept = mean_variance,
     linetype = "dashed",
     linewidth = 0.7
   ) +
@@ -627,7 +628,7 @@ variance_seed_plot <- ggplot(
   labs(
     title = "Joint GA stability across random seeds",
     subtitle = paste0(
-      "Dashed line shows the best variance: ",
+      "Dashed line shows the mean variance: ",
       round(best_variance, 6)
     ),
     x = "Random seed",
