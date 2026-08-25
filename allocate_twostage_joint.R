@@ -41,7 +41,7 @@ allocate_twostage_ga_joint <- function(strata,
   )
   
   if (is.null(suggestion)) {
-    
+    # if no suggestion, then propose proportional for each candidate
     starting_c_h <- pmax(lower_c, pmin(upper_c, round(total_n / L / 2)))
     starting_k_h <- pmax(lower_k, round(total_n / sum(starting_c_h)))
     

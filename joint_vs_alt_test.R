@@ -31,7 +31,7 @@ clean_data <- read_survey_data(
 )
 
 # 5. Define Shared Optimization Configurations
-TARGET_N   <- 5000
+TARGET_N   <- 1000
 MAX_BUDGET <- 1400000
 GA_SEED    <- 42
 POP_SIZE   <- 20
@@ -107,13 +107,10 @@ time_decoupled <- system.time({
     strata     = frame$strata,
     total_n    = TARGET_N,
     max_cost   = MAX_BUDGET,
-    total_c    = 1000,           # Enforcing the global cluster cap strictly!
     popSize    = POP_SIZE,
     maxiter    = MAX_ITER,
     run        = RUN_LIMIT,
-    seed       = GA_SEED,
-    suggestion = frame$c_h  
-  )
+    seed       = GA_SEED  )
 })
 
 
