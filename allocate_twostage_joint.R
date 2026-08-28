@@ -181,8 +181,6 @@ allocate_twostage_ga_joint <- function(strata,
   total_between  <- sum(var_between_h)
   total_within   <- sum(var_within_h)
   
-  # =========================================================================
-  
   total_cost <- cost_twostage(
     c_h = best_c_h,
     k_h = best_k_h,
@@ -203,20 +201,16 @@ allocate_twostage_ga_joint <- function(strata,
     max_units = upper_k
   )
   
-  # --- NOTE ON FEASIBILITY GATEKEEPER ---
-  # If you changed repair_ckh to handle minimums (>=), keep repaired$repaired_exactly.
-  # If your repair function overshoots and returns FALSE for repaired_exactly, 
-  # remove '&& repaired$repaired_exactly' so it relies strictly on constraint_check$feasible.
   is_feasible <- constraint_check$feasible && repaired$repaired_exactly
   
   list(
     feasible         = is_feasible,
-    variance         = total_variance,  # Preserves keyword matching for comparison script
+    variance         = total_variance,
     between_variance = total_between,    
     within_variance  = total_within,     
     total_n          = sum(best_c_h * best_k_h),  
     total_cost       = total_cost,  
-    allocation       = allocation, # Contains the new row-by-row columns
+    allocation       = allocation,
     constraint_check = constraint_check,  
     repair           = repaired,  
     ga_object        = ga_fit  
