@@ -357,7 +357,7 @@ variance_long <- final_results |>
 p_variance <- ggplot(variance_long, aes(x = Budget_Target, y = Variance, color = Method)) +
   geom_line(linewidth = 1) +
   geom_point(size = 2.5) +
-  scale_x_continuous(labels = scales::dollar_format()) +
+  scale_x_continuous() +
   labs(
     title = "Variance at matched cost: GA vs R2BEAT",
     subtitle = "Lower is better — all methods evaluated at the same realized budget per tier",
@@ -389,8 +389,8 @@ cost_long <- final_results |>
 p_cost <- ggplot(cost_long, aes(x = Budget_Target, y = RealizedCost, color = Method)) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey60") +
   geom_point(size = 3) +
-  scale_x_continuous(labels = scales::dollar_format()) +
-  scale_y_continuous(labels = scales::dollar_format()) +
+  scale_x_continuous() +
+  scale_y_continuous() +
   labs(
     title = "Cost-matching sanity check",
     subtitle = "Points should sit on the dashed line — confirms the bisection actually matched budgets",
