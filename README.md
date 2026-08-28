@@ -171,3 +171,17 @@ affordable_c <- floor((max_cost - cost_unit * total_n) / cost_cluster)
 
 For repeated runs, start with a small `joint_ga_seed_count` while developing.
 Increase it only when you need stronger stability evidence.
+
+## NB Frame Size and Feasible GA Starting Values
+
+Two helper functions are important for making the joint two-stage GA behave reliably: `frame_c()` and `find_feasible_joint_start()`.
+
+### `frame_c()`
+
+`frame_c()` calculates a realistic upper limit for the number of clusters that can be included in the sampling frame, given the available budget, unit cost, cluster cost, and target sample size.
+
+The logic is:
+
+available_c <- nrow(unique(survey_data[c("strata", "cluster")]))
+affordable_c <- floor((max_cost - unit_cost * total_n) / cluster_cost)
+min(available_c, affordable_c)
