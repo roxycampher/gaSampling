@@ -12,7 +12,8 @@ repair_ckh <- function(c_h,
                        cost_cluster = NULL,
                        cost_unit = NULL,
                        min_budget_use = 0.95, # hard coded for now
-                       budget_tol = 0.02) {
+                       budget_tol = 0.02,
+                       n_tol = 25) {
   L <- length(c_h)
   use_cost <- !is.null(max_cost)
   
@@ -62,8 +63,9 @@ repair_ckh <- function(c_h,
     } else {
       NA_real_
     }
+    sample_size_gap <- achieved_total_n - total_n
     sample_shortfall <- max(0, total_n - achieved_total_n)
-    sample_size_ok <- achieved_total_n >= total_n
+    sample_size_ok <- abs(sample_size_gap) <= n_tol
     
     lower_cost_bound <- if (use_cost) max_cost * min_budget_use else NA_real_
     upper_cost_bound <- if (use_cost) max_cost * (1 + budget_tol) else NA_real_
@@ -104,7 +106,7 @@ repair_ckh <- function(c_h,
     unused_budget <- if (use_cost) abs(max_cost - result$total_cost) else 0
     
     c(
-      result$sample_shortfall,
+      abs(result$sample_size_gap),
       result$cost_over,
       result$budget_underuse,
       unused_budget,
@@ -284,6 +286,7 @@ repair_ckh <- function(c_h,
   best
 }
 
+# wrapper alias
 repair_joint <- function(...) {
   repair_ckh(...)
 }

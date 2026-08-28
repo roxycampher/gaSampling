@@ -10,7 +10,8 @@ check_constraints <- function(c_h,
                               max_clusters = NULL,
                               max_units = NULL,
                               min_budget_use = 0.95,
-                              budget_tol = 0.02) {
+                              budget_tol = 0.02,
+                              n_tolerance = 25) { # can vary x units up or down
   
   # Compute stratum sample sizes
   n_h <- c_h * k_h
@@ -31,11 +32,13 @@ check_constraints <- function(c_h,
     unit_ok <- unit_ok && all(k_h <= max_units)
   }
   
-  # Check total sample size constraint (LOWER BOUND!!)
+  # Check total sample size constraint
   if (!is.null(total_n)) {
-    sample_size_ok <- sum(n_h) >= total_n
+    sample_size_gap <- sum(n_h) - total_n
+    sample_size_ok <- abs(sample_size_gap) <= n_tolerance
   } else {
-    sample_size_ok <- TRUE # if no total sample size was set
+    sample_size_gap <- NA_integer_
+    sample_size_ok <- TRUE
   }
   
   # Check cost constraint (FORCE A STRICTER LB WITH A SMALL UB tolerance)

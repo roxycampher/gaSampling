@@ -26,7 +26,7 @@ source("check_constraints.R")
 # 0. OUTPUT PATHS
 ################################################################################
 
-results_dir <- "hpc_results"
+results_dir <- "local_results"
 checkpoint_dir <- file.path(results_dir, "checkpoints")
 dir.create(checkpoint_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -207,11 +207,24 @@ run_one_tier <- function(b, current_max_cost, target_n, cost_cluster_val, cost_u
     strata   = strata,
     total_n  = target_n,
     max_cost = current_max_cost,
-    popSize  = 100,
-    maxiter  = 500,
-    run      = 30,
+    popSize  = 20,
+    maxiter  = 50,
+    run      = 20,
     seed     = 123
   )
+  
+  # if the allocation overshoots
+  if (!isTRUE(ga_result$feasible)) {
+    warning(sprintf(
+      "Tier %d: GA returned infeasible allocation. Cost = %.0f, budget = %.0f, sample gap = %d. Skipping.",
+      b,
+      ga_result$total_cost,
+      current_max_cost,
+      ga_result$repair$sample_size_gap
+    ))
+    return(NULL)
+  }
+  
   cat(sprintf("GA Realized Cost: $%.0f | GA Variance: %.4f\n", ga_result$total_cost, ga_result$variance))
 
   r2beat_matched <- calibrate_r2beat_bisection(
@@ -404,3 +417,4 @@ ggsave(plot_cost_path, p_cost, width = 8, height = 5.5, dpi = 300)
 cat(sprintf("Cost-match check plot written to %s\n", plot_cost_path))
 
 cat("\nDone.\n")
+
