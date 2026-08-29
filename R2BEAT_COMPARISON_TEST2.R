@@ -209,9 +209,18 @@ run_one_cv <- function(idx, cv_target, r2b_input, strata, province_lookup, minim
     run      = 30,
     seed     = 123
   )
-  if (!ga_res$feasible) {
-    warning(sprintf("CV %d: GA returned an infeasible solution (cost/n not satisfied) — flagging.", idx))
+  
+  if (!isTRUE(ga_res$feasible)) {
+    warning(sprintf(
+      "CV %d: GA returned infeasible allocation. Cost = %.0f, cap = %.0f, sample gap = %d. Skipping.",
+      idx,
+      ga_res$total_cost,
+      target_cost_i,
+      ga_res$repair$sample_size_gap
+    ))
+    return(NULL)
   }
+  
   cat(sprintf("GA: n = %d, cost = %.0f, variance = %.4f\n",
               ga_res$total_n, ga_res$total_cost, ga_res$variance))
 

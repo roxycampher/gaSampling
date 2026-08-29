@@ -318,7 +318,6 @@ joint_start <- find_feasible_joint_start(
 )
 
 total_c <- joint_start$total_c
-total_c 
 
 # Build the four starting suggestions used in the diagnostic comparisons:
 # three proportional c_h allocations and one equal c_h allocation. These are
@@ -343,31 +342,31 @@ starting_suggestion_diagnostics <- joint_starting_suggestions |>
     .groups = "drop"
   )
 
-#joint_starting_suggestions
-#starting_suggestion_diagnostics
+joint_starting_suggestions
+starting_suggestion_diagnostics
 
-# default_start <- joint_starting_suggestions |>
-#   dplyr::filter(starting_suggestion == "3. Neyman proportional")
+default_start <- joint_starting_suggestions |>
+ dplyr::filter(starting_suggestion == "3. Neyman proportional")
 
-# One run with Neyman proportional c_h allocation 
-#ga_result <- allocate_twostage_ga_joint(
-#  strata = strata,
-#  total_n = total_n,
-#  max_cost = max_cost,
-#  popSize = joint_ga_pop_size,
-#  maxiter = joint_ga_maxiter,
-#  run = joint_ga_run,
-#  seed = 123,
-#  suggestion = c(default_start$repaired_c_h, default_start$repaired_k_h)
-#)
+# One run with Neyman proportional c_h allocation
+ga_result <- allocate_twostage_ga_joint(
+  strata = strata,
+  total_n = total_n,
+  max_cost = max_cost,
+  popSize = joint_ga_pop_size,
+  maxiter = joint_ga_maxiter,
+  run = joint_ga_run,
+  seed = 123,
+  suggestion = c(default_start$repaired_c_h, default_start$repaired_k_h)
+)
 
-# ga_result$allocation
-# ga_result$variance
-# ga_result$total_n
-# ga_result$total_cost
-# ga_result$feasible
-# ga_result$constraint_check
-# ga_result$repair
+ga_result$allocation
+ga_result$variance
+ga_result$total_n
+ga_result$total_cost
+ga_result$feasible
+ga_result$constraint_check
+ga_result$repair
 
 ################################################################################
 #                    MULTIPLE RUN TESTS
