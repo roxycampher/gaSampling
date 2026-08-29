@@ -71,11 +71,11 @@ run_r2beat <- function(cv_target, input, min_PSU_strat = 2) {
 eval_r2beat_cost <- function(cv_target, input, strata_df, province_lkp, min_r2b) {
   fit <- try(run_r2beat(cv_target = cv_target, input = input), silent = TRUE)
   if (inherits(fit, "try-error")) return(list(cost = NA, fit = NULL, alloc = NULL))
-
+  
   alloc_tab <- fit$alloc[fit$alloc$STRATUM != "Total", ]
   r2b_nh <- alloc_tab |>
     transmute(R2B_STRATUM = as.integer(as.character(STRATUM)), n_h_r2beat = as.numeric(ALLOC))
-
+  
   r2b_ch <- lapply(
     split(fit$psu_trs, fit$psu_trs$STRATUM),
     function(x) {
@@ -84,20 +84,20 @@ eval_r2beat_cost <- function(cv_target, input, strata_df, province_lkp, min_r2b)
       data.frame(R2B_STRATUM = as.integer(as.character(x$STRATUM[1])), c_h_r2beat = as.numeric(n_SR + n_NSR))
     }
   ) |> bind_rows()
-
+  
   comb <- r2b_nh |>
     left_join(r2b_ch, by = "R2B_STRATUM") |>
     left_join(province_lkp, by = "R2B_STRATUM") |>
     arrange(match(province, strata_df$province)) |>
     mutate(k_h_r2beat = n_h_r2beat / c_h_r2beat)
-
+  
   cost <- cost_twostage(
     c_h          = comb$c_h_r2beat,
     k_h          = comb$k_h_r2beat,
     cost_cluster = strata_df$cost_cluster,
     cost_unit    = strata_df$cost_unit
   )
-
+  
   list(cost = cost, fit = fit, alloc = comb)
 }
 
@@ -119,13 +119,13 @@ calibrate_r2beat_bisection <- function(target_cost, input, strata_df, province_l
 }
 
 integerize_r2beat_allocation <- function(r2beat_alloc, strata_df, target_n,
-                                          max_cost, cost_cluster_val, cost_unit_val) {
+                                         max_cost, cost_cluster_val, cost_unit_val) {
   L <- nrow(r2beat_alloc)
   lower_c <- rep(1L, L)
   upper_c <- strata_df$C_h
   lower_k <- rep(1L, L)
-  upper_k <- rep(target_n, L)
-
+  upper_k <- strata_df$max_k_h   # realistic per-stratum cap, not total_n
+  
   repair_ckh(
     c_h              = r2beat_alloc$c_h_r2beat,
     k_h              = r2beat_alloc$k_h_r2beat,
@@ -174,7 +174,7 @@ full_frame <- prepare_sampling_frame(
 )
 strata <- full_frame$strata
 
-cat(sprintf("\n=== SMOKE TEST | Budget: $%.0f | target_n: %d ===\n", current_max_cost, target_n))
+cat(sprintf("\n=== SMOKE TEST | Budget: R%.0f | target_n: %d ===\n", current_max_cost, target_n))
 
 # --- GA with tiny settings, just to confirm the pipeline runs end to end ---
 ga_result <- allocate_twostage_ga_joint(
@@ -187,7 +187,8 @@ ga_result <- allocate_twostage_ga_joint(
   seed     = 123
 )
 
-cat(sprintf("GA Realized Cost: $%.0f | GA Variance: %.4f\n", ga_result$total_cost, ga_result$variance))
+cat(sprintf("GA Realized Cost: R%.0f | GA Variance: %.4f | Feasible: %s\n",
+            ga_result$total_cost, ga_result$variance, ga_result$feasible))
 
 r2beat_matched <- calibrate_r2beat_bisection(
   target_cost  = ga_result$total_cost,
@@ -221,8 +222,15 @@ test_result <- data.frame(
   R2BEAT_Cost_Cont = r2beat_matched$cost,
   R2BEAT_Cost_Integer = cost_twostage(r2beat_integer$c_h, r2beat_integer$k_h, cost_cluster_val, cost_unit_val),
   GA_Variance = ga_result$variance,
+  GA_Feasible = isTRUE(ga_result$feasible),
   R2BEAT_Variance_Cont = var_r2beat_continuous,
   R2BEAT_Variance_Integer = var_r2beat_integer
 )
 
 print(test_result)
+
+cat("\nPer-stratum max_k_h (realistic k_h ceiling from smallest ward):\n")
+print(strata[, c("stratum", "C_h", "max_k_h")])
+
+cat("\nGA allocation (c_h, k_h, n_h per stratum):\n")
+print(ga_result$allocation[, c("stratum", "c_h", "k_h", "n_h")])

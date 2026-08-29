@@ -1,8 +1,5 @@
-#!/usr/bin/env Rscript
 ################################################################################
 # GA vs R2BEAT: cost-matched variance comparison across budget tiers
-# Designed to run unattended on HPC. Checkpoints each tier to disk so a
-# crash / walltime kill doesn't lose completed work — rerunning the script
 # skips tiers that already have a saved checkpoint.
 ################################################################################
 
@@ -104,11 +101,11 @@ run_r2beat <- function(cv_target, input, min_PSU_strat = 2) {
 eval_r2beat_cost <- function(cv_target, input, strata_df, province_lkp, min_r2b) {
   fit <- try(run_r2beat(cv_target = cv_target, input = input), silent = TRUE)
   if (inherits(fit, "try-error")) return(list(cost = NA, fit = NULL, alloc = NULL))
-
+  
   alloc_tab <- fit$alloc[fit$alloc$STRATUM != "Total", ]
   r2b_nh <- alloc_tab |>
     transmute(R2B_STRATUM = as.integer(as.character(STRATUM)), n_h_r2beat = as.numeric(ALLOC))
-
+  
   r2b_ch <- lapply(
     split(fit$psu_trs, fit$psu_trs$STRATUM),
     function(x) {
@@ -117,20 +114,20 @@ eval_r2beat_cost <- function(cv_target, input, strata_df, province_lkp, min_r2b)
       data.frame(R2B_STRATUM = as.integer(as.character(x$STRATUM[1])), c_h_r2beat = as.numeric(n_SR + n_NSR))
     }
   ) |> bind_rows()
-
+  
   comb <- r2b_nh |>
     left_join(r2b_ch, by = "R2B_STRATUM") |>
     left_join(province_lkp, by = "R2B_STRATUM") |>
     arrange(match(province, strata_df$province)) |>
     mutate(k_h_r2beat = n_h_r2beat / c_h_r2beat)
-
+  
   cost <- cost_twostage(
     c_h          = comb$c_h_r2beat,
     k_h          = comb$k_h_r2beat,
     cost_cluster = strata_df$cost_cluster,
     cost_unit    = strata_df$cost_unit
   )
-
+  
   list(cost = cost, fit = fit, alloc = comb)
 }
 
@@ -153,13 +150,16 @@ calibrate_r2beat_bisection <- function(target_cost, input, strata_df, province_l
 }
 
 integerize_r2beat_allocation <- function(r2beat_alloc, strata_df, target_n,
-                                          max_cost, cost_cluster_val, cost_unit_val) {
+                                         max_cost, cost_cluster_val, cost_unit_val) {
   L <- nrow(r2beat_alloc)
   lower_c <- rep(1L, L)
   upper_c <- strata_df$C_h
   lower_k <- rep(1L, L)
-  upper_k <- rep(target_n, L)
-
+  upper_k <- strata_df$max_k_h   # same realistic per-stratum cap the GA now uses —
+  # keeps this a fair comparison rather than letting
+  # R2BEAT's integerized allocation propose k_h values
+  # no ward can actually supply
+  
   repair_ckh(
     c_h              = r2beat_alloc$c_h_r2beat,
     k_h              = r2beat_alloc$k_h_r2beat,
@@ -177,23 +177,23 @@ integerize_r2beat_allocation <- function(r2beat_alloc, strata_df, target_n,
   )
 }
 
-run_one_tier <- function(b, current_max_cost, target_n, cost_cluster_val, cost_unit_val,
-                          survey_data, r2b_input, province_lookup, minimum_r2b) {
-
+run_one_tier <- function(b, seed, current_max_cost, target_n, cost_cluster_val, cost_unit_val,
+                         survey_data, r2b_input, province_lookup, minimum_r2b) {
+  
   cat(sprintf("\n======================================================\n"))
-  cat(sprintf(" TIER %d | Budget: $%.0f | target_n: %d | C_cluster: $%.0f | C_unit: $%.0f\n",
-              b, current_max_cost, target_n, cost_cluster_val, cost_unit_val))
+  cat(sprintf(" TIER %d | SEED %d | Budget: R%.0f | target_n: %d | C_cluster: R%.0f | C_unit: R%.0f\n",
+              b, seed, current_max_cost, target_n, cost_cluster_val, cost_unit_val))
   cat(sprintf("======================================================\n"))
-
+  
   if ((cost_unit_val * target_n) >= current_max_cost) {
     warning(sprintf("Tier %d: unit costs exceed budget — skipping.", b))
     return(NULL)
   }
-
+  
   available_c  <- nrow(unique(survey_data[c("strata", "cluster")]))
   affordable_c <- floor((current_max_cost - cost_unit_val * target_n) / cost_cluster_val)
   full_frame_c <- min(available_c, pmax(1, affordable_c))
-
+  
   full_frame <- prepare_sampling_frame(
     data         = survey_data,
     y_var        = "count_children_present",
@@ -202,7 +202,7 @@ run_one_tier <- function(b, current_max_cost, target_n, cost_cluster_val, cost_u
     cost_unit    = cost_unit_val
   )
   strata <- full_frame$strata
-
+  
   ga_result <- allocate_twostage_ga_joint(
     strata   = strata,
     total_n  = target_n,
@@ -210,10 +210,15 @@ run_one_tier <- function(b, current_max_cost, target_n, cost_cluster_val, cost_u
     popSize  = 100,
     maxiter  = 500,
     run      = 30,
-    seed     = 123
+    seed     = seed
   )
-  cat(sprintf("GA Realized Cost: $%.0f | GA Variance: %.4f\n", ga_result$total_cost, ga_result$variance))
-
+  cat(sprintf("GA Realized Cost: R%.0f | GA Variance: %.4f | Feasible: %s\n",
+              ga_result$total_cost, ga_result$variance, ga_result$feasible))
+  
+  if (!isTRUE(ga_result$feasible)) {
+    warning(sprintf("Tier %d, seed %d: GA solution is NOT feasible — reporting anyway, flag in results.", b, seed))
+  }
+  
   r2beat_matched <- calibrate_r2beat_bisection(
     target_cost  = ga_result$total_cost,
     input        = r2b_input,
@@ -221,12 +226,12 @@ run_one_tier <- function(b, current_max_cost, target_n, cost_cluster_val, cost_u
     province_lkp = province_lookup,
     min_r2b      = minimum_r2b
   )
-
+  
   if (is.null(r2beat_matched$alloc)) {
     warning(sprintf("Tier %d: R2BEAT bisection failed — skipping.", b))
     return(NULL)
   }
-
+  
   r2beat_integer <- integerize_r2beat_allocation(
     r2beat_alloc     = r2beat_matched$alloc,
     strata_df        = strata,
@@ -235,24 +240,25 @@ run_one_tier <- function(b, current_max_cost, target_n, cost_cluster_val, cost_u
     cost_cluster_val = cost_cluster_val,
     cost_unit_val    = cost_unit_val
   )
-
+  
   var_r2beat_continuous <- variance_twostage(
     c_h = r2beat_matched$alloc$c_h_r2beat, k_h = r2beat_matched$alloc$k_h_r2beat,
     W_h = strata$W_h, sigma2_bh = strata$sigma2_bh, sigma2_wh = strata$sigma2_wh
   )
-
+  
   var_r2beat_integer <- variance_twostage(
     c_h = r2beat_integer$c_h, k_h = r2beat_integer$k_h,
     W_h = strata$W_h, sigma2_bh = strata$sigma2_bh, sigma2_wh = strata$sigma2_wh
   )
-
+  
   cost_r2beat_integer <- cost_twostage(
     c_h = r2beat_integer$c_h, k_h = r2beat_integer$k_h,
     cost_cluster = cost_cluster_val, cost_unit = cost_unit_val
   )
-
+  
   data.frame(
     Tier                    = b,
+    Seed                    = seed,
     Budget_Target           = current_max_cost,
     C_Cluster               = cost_cluster_val,
     C_Unit                  = cost_unit_val,
@@ -266,6 +272,7 @@ run_one_tier <- function(b, current_max_cost, target_n, cost_cluster_val, cost_u
     R2BEAT_SSU_Cont         = sum(r2beat_matched$alloc$n_h_r2beat),
     R2BEAT_SSU_Integer      = sum(r2beat_integer$n_h),
     GA_Variance             = ga_result$variance,
+    GA_Feasible             = isTRUE(ga_result$feasible),
     R2BEAT_Variance_Cont    = var_r2beat_continuous,
     R2BEAT_Variance_Integer = var_r2beat_integer
   )
@@ -280,40 +287,45 @@ target_n_vec      <- c(  1000,    2500,    5000,   15000,    35000)
 cost_cluster_vec  <- c(   500,    1000,    1500,    2000,     3000)
 cost_unit_vec     <- c(    50,     100,     120,     150,      200)
 
+seeds <- c(101, 202, 303, 404, 505)   # 5 seeds per tier
+
 ################################################################################
 # 4. RUN TIERS WITH CHECKPOINTING
 ################################################################################
 
 for (b in seq_along(target_costs)) {
-
-  checkpoint_file <- file.path(checkpoint_dir, sprintf("tier_%02d.rds", b))
-
-  if (file.exists(checkpoint_file)) {
-    cat(sprintf("Tier %d already checkpointed — skipping.\n", b))
-    next
-  }
-
-  tier_result <- tryCatch(
-    run_one_tier(
-      b                 = b,
-      current_max_cost  = target_costs[b],
-      target_n          = target_n_vec[b],
-      cost_cluster_val  = cost_cluster_vec[b],
-      cost_unit_val     = cost_unit_vec[b],
-      survey_data       = survey_data,
-      r2b_input         = r2b_input,
-      province_lookup   = province_lookup,
-      minimum_r2b       = minimum_r2b
-    ),
-    error = function(e) {
-      warning(sprintf("Tier %d failed with error: %s", b, conditionMessage(e)))
-      NULL
+  for (s in seeds) {
+    
+    checkpoint_file <- file.path(checkpoint_dir, sprintf("tier_%02d_seed_%d.rds", b, s))
+    
+    if (file.exists(checkpoint_file)) {
+      cat(sprintf("Tier %d, seed %d already checkpointed — skipping.\n", b, s))
+      next
     }
-  )
-
-  if (!is.null(tier_result)) {
-    saveRDS(tier_result, checkpoint_file)
-    cat(sprintf("Tier %d checkpointed to %s\n", b, checkpoint_file))
+    
+    tier_result <- tryCatch(
+      run_one_tier(
+        b                 = b,
+        seed              = s,
+        current_max_cost  = target_costs[b],
+        target_n          = target_n_vec[b],
+        cost_cluster_val  = cost_cluster_vec[b],
+        cost_unit_val     = cost_unit_vec[b],
+        survey_data       = survey_data,
+        r2b_input         = r2b_input,
+        province_lookup   = province_lookup,
+        minimum_r2b       = minimum_r2b
+      ),
+      error = function(e) {
+        warning(sprintf("Tier %d, seed %d failed with error: %s", b, s, conditionMessage(e)))
+        NULL
+      }
+    )
+    
+    if (!is.null(tier_result)) {
+      saveRDS(tier_result, checkpoint_file)
+      cat(sprintf("Tier %d, seed %d checkpointed to %s\n", b, s, checkpoint_file))
+    }
   }
 }
 
@@ -321,14 +333,14 @@ for (b in seq_along(target_costs)) {
 # 5. COMBINE CHECKPOINTS INTO FINAL TABLE
 ################################################################################
 
-checkpoint_files <- list.files(checkpoint_dir, pattern = "^tier_.*\\.rds$", full.names = TRUE)
+checkpoint_files <- list.files(checkpoint_dir, pattern = "^tier_.*_seed_.*\\.rds$", full.names = TRUE)
 
 if (length(checkpoint_files) == 0) {
-  stop("No tiers completed successfully — nothing to combine.")
+  stop("No tier/seed combinations completed successfully — nothing to combine.")
 }
 
 final_results <- bind_rows(lapply(checkpoint_files, readRDS)) |>
-  arrange(Tier)
+  arrange(Tier, Seed)
 
 write_csv(final_results, table_path)
 cat(sprintf("\nFinal table written to %s\n", table_path))
@@ -338,9 +350,9 @@ print(final_results)
 # 6. PLOTS
 ################################################################################
 
-# --- 6a. Variance comparison across budget tiers ---
+# --- 6a. Variance comparison across budget tiers, spread across seeds ---
 variance_long <- final_results |>
-  select(Budget_Target, GA_Variance, R2BEAT_Variance_Cont, R2BEAT_Variance_Integer) |>
+  select(Tier, Budget_Target, Seed, GA_Variance, R2BEAT_Variance_Cont, R2BEAT_Variance_Integer) |>
   tidyr::pivot_longer(
     cols = c(GA_Variance, R2BEAT_Variance_Cont, R2BEAT_Variance_Integer),
     names_to = "Method",
@@ -348,26 +360,25 @@ variance_long <- final_results |>
   ) |>
   mutate(
     Method = recode(Method,
-      GA_Variance                 = "GA (this package)",
-      R2BEAT_Variance_Cont        = "R2BEAT (continuous)",
-      R2BEAT_Variance_Integer     = "R2BEAT (integer, cost-aware)"
-    )
+                    GA_Variance                 = "GA (this package)",
+                    R2BEAT_Variance_Cont        = "R2BEAT (continuous)",
+                    R2BEAT_Variance_Integer     = "R2BEAT (integer, cost-aware)"
+    ),
+    Budget_Label = factor(Budget_Target, levels = sort(unique(Budget_Target)))
   )
 
-p_variance <- ggplot(variance_long, aes(x = Budget_Target, y = Variance, color = Method)) +
-  geom_line(linewidth = 1) +
-  geom_point(size = 2.5) +
-  scale_x_continuous() +
+p_variance <- ggplot(variance_long, aes(x = Budget_Label, y = Variance, fill = Method)) +
+  geom_boxplot(position = position_dodge(width = 0.75), width = 0.6, outlier.size = 1) +
   labs(
-    title = "Variance at matched cost: GA vs R2BEAT",
-    subtitle = "Lower is better — all methods evaluated at the same realized budget per tier",
-    x = "Budget (matched across methods within tier)",
+    title = "Variance at matched cost: GA vs R2BEAT, across seeds",
+    subtitle = sprintf("%d seeds per tier — GA variance only meaningful where GA_Feasible is TRUE", length(unique(final_results$Seed))),
+    x = "Budget tier (matched across methods within tier)",
     y = "Total variance (var_total_h summed)"
   ) +
   theme_minimal(base_size = 13) +
   theme(legend.position = "bottom")
 
-ggsave(plot_variance_path, p_variance, width = 8, height = 5.5, dpi = 300)
+ggsave(plot_variance_path, p_variance, width = 9, height = 5.5, dpi = 300)
 cat(sprintf("Variance plot written to %s\n", plot_variance_path))
 
 # --- 6b. Cost-match sanity check (confirms bisection actually matched budgets) ---
@@ -380,9 +391,9 @@ cost_long <- final_results |>
   ) |>
   mutate(
     Method = recode(Method,
-      GA_Cost             = "GA (this package)",
-      R2BEAT_Cost_Cont    = "R2BEAT (continuous)",
-      R2BEAT_Cost_Integer = "R2BEAT (integer, cost-aware)"
+                    GA_Cost             = "GA (this package)",
+                    R2BEAT_Cost_Cont    = "R2BEAT (continuous)",
+                    R2BEAT_Cost_Integer = "R2BEAT (integer, cost-aware)"
     )
   )
 
@@ -393,7 +404,7 @@ p_cost <- ggplot(cost_long, aes(x = Budget_Target, y = RealizedCost, color = Met
   scale_y_continuous() +
   labs(
     title = "Cost-matching sanity check",
-    subtitle = "Points should sit on the dashed line — confirms the bisection actually matched budgets",
+    subtitle = "Points should sit on the dashed line:confirms the bisection actually matched budgets",
     x = "Target budget for tier",
     y = "Realized cost"
   ) +

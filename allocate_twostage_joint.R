@@ -5,7 +5,8 @@ allocate_twostage_ga_joint <- function(strata,
                                        maxiter = 1000,
                                        run = 50,
                                        seed = NULL,
-                                       suggestion = NULL) {
+                                       suggestion = NULL,
+                                       monitor = NULL) {
   
   if (!is.null(seed)) set.seed(seed)
   
@@ -90,7 +91,8 @@ allocate_twostage_ga_joint <- function(strata,
     suggestions = suggestions,
     popSize = popSize,
     maxiter = maxiter,
-    run = run
+    run = run,
+    monitor = monitor
   )
   
   best_x <- ga_fit@solution[1, ]

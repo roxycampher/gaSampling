@@ -209,6 +209,9 @@ run_one_cv <- function(idx, cv_target, r2b_input, strata, province_lookup, minim
     run      = 30,
     seed     = 123
   )
+  if (!ga_res$feasible) {
+    warning(sprintf("CV %d: GA returned an infeasible solution (cost/n not satisfied) — flagging.", idx))
+  }
   cat(sprintf("GA: n = %d, cost = %.0f, variance = %.4f\n",
               ga_res$total_n, ga_res$total_cost, ga_res$variance))
 
@@ -236,6 +239,7 @@ run_one_cv <- function(idx, cv_target, r2b_input, strata, province_lookup, minim
     R2BEAT_Cost_Integer      = cost_r2b_int,
     GA_n                     = ga_res$total_n,
     GA_Cost                  = ga_res$total_cost,
+    GA_Feasible              = ga_res$feasible,
     GA_Variance              = ga_res$variance,
     R2BEAT_Variance_Cont     = var_r2b_cont,
     R2BEAT_Variance_Integer  = var_r2b_int
@@ -246,7 +250,7 @@ run_one_cv <- function(idx, cv_target, r2b_input, strata, province_lookup, minim
 # 3. CV GRID
 ################################################################################
 
-cv_grid <- c(0.005, 0.01, 0.02, 0.05, 0.1)
+cv_grid <- seq(0.5, 0.01, length.out = 10)
 
 ################################################################################
 # 4. RUN WITH CHECKPOINTING
