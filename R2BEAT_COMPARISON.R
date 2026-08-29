@@ -9,6 +9,7 @@ library(dplyr)
 library(readr)
 library(R2BEAT)
 library(ggplot2)
+library(parallel)
 
 source("variance_twostage.R")
 source("allocate_twostage_joint.R")
@@ -202,6 +203,44 @@ run_one_tier <- function(b, seed, current_max_cost, target_n, cost_cluster_val, 
     cost_unit    = cost_unit_val
   )
   strata <- full_frame$strata
+  # ---------------------------------------------------------------------------
+  # GA STARTING SUGGESTION: NEYMAN c_h ALLOCATION
+  # ---------------------------------------------------------------------------
+  # The joint GA can run without a user-supplied suggestion, in which case
+  # allocate_twostage_ga_joint() builds a simple internal starting point. For
+  # this R2BEAT budget-tier comparison, we want the GA to start from a more
+  # principled and already-repaired allocation.
+  #
+  # find_feasible_joint_start() constructs several possible c_h starting shapes,
+  # repairs each one into paired c_h/k_h values, and checks feasibility against
+  # this tier's resource envelope:
+  #
+  #   - total sample size close to target_n
+  #   - total cost close to current_max_cost
+  #   - c_h and k_h inside their stratum bounds
+  #
+  # The default_starting_suggestion below selects "3. Neyman proportional".
+  # ---------------------------------------------------------------------------
+  
+  neyman_start <- find_feasible_joint_start(
+    strata = strata,
+    total_n = target_n,
+    max_cost = current_max_cost,
+    default_starting_suggestion = "3. Neyman proportional",
+    require_all_starts = FALSE
+  )
+  
+  neyman_start_diag <- neyman_start$diagnostics |>
+    filter(starting_suggestion == "3. Neyman proportional")
+  
+  cat(sprintf(
+    "GA Neyman start: c = %d, n = %d, cost = %.0f, sample gap = %d, feasible = %s\n",
+    neyman_start$total_c,
+    neyman_start_diag$repaired_total_n,
+    neyman_start_diag$repaired_total_cost,
+    neyman_start_diag$sample_size_gap,
+    neyman_start_diag$feasible
+  ))
   
   ga_result <- allocate_twostage_ga_joint(
     strata   = strata,
@@ -226,7 +265,7 @@ run_one_tier <- function(b, seed, current_max_cost, target_n, cost_cluster_val, 
   }
   
   cat(sprintf("GA Realized Cost: $%.0f | GA Variance: %.4f\n", ga_result$total_cost, ga_result$variance))
-
+  
   r2beat_matched <- calibrate_r2beat_bisection(
     target_cost  = ga_result$total_cost,
     input        = r2b_input,
@@ -301,39 +340,79 @@ seeds <- c(101, 202, 303, 404, 505)   # 5 seeds per tier
 # 4. RUN TIERS WITH CHECKPOINTING
 ################################################################################
 
-for (b in seq_along(target_costs)) {
-  for (s in seeds) {
-    
-    checkpoint_file <- file.path(checkpoint_dir, sprintf("tier_%02d_seed_%d.rds", b, s))
-    
-    if (file.exists(checkpoint_file)) {
-      cat(sprintf("Tier %d, seed %d already checkpointed — skipping.\n", b, s))
-      next
+run_and_checkpoint_tier <- function(b, s) {
+  checkpoint_file <- file.path(checkpoint_dir, sprintf("tier_%02d_seed_%d.rds", b, s))
+  
+  if (file.exists(checkpoint_file)) {
+    cat(sprintf("Tier %d, seed %d already checkpointed — skipping.\n", b, s))
+    return(readRDS(checkpoint_file))
+  }
+  
+  tier_result <- tryCatch(
+    run_one_tier(
+      b                 = b,
+      seed              = s,
+      current_max_cost  = target_costs[b],
+      target_n          = target_n_vec[b],
+      cost_cluster_val  = cost_cluster_vec[b],
+      cost_unit_val     = cost_unit_vec[b],
+      survey_data       = survey_data,
+      r2b_input         = r2b_input,
+      province_lookup   = province_lookup,
+      minimum_r2b       = minimum_r2b
+    ),
+    error = function(e) {
+      warning(sprintf("Tier %d, seed %d failed with error: %s", b, s, conditionMessage(e)))
+      NULL
     }
-    
-    tier_result <- tryCatch(
-      run_one_tier(
-        b                 = b,
-        seed              = s,
-        current_max_cost  = target_costs[b],
-        target_n          = target_n_vec[b],
-        cost_cluster_val  = cost_cluster_vec[b],
-        cost_unit_val     = cost_unit_vec[b],
-        survey_data       = survey_data,
-        r2b_input         = r2b_input,
-        province_lookup   = province_lookup,
-        minimum_r2b       = minimum_r2b
-      ),
-      error = function(e) {
-        warning(sprintf("Tier %d, seed %d failed with error: %s", b, s, conditionMessage(e)))
-        NULL
-      }
-    )
-    
-    if (!is.null(tier_result)) {
-      saveRDS(tier_result, checkpoint_file)
-      cat(sprintf("Tier %d, seed %d checkpointed to %s\n", b, s, checkpoint_file))
-    }
+  )
+  
+  if (!is.null(tier_result)) {
+    saveRDS(tier_result, checkpoint_file)
+    cat(sprintf("Tier %d, seed %d checkpointed to %s\n", b, s, checkpoint_file))
+  }
+  
+  tier_result
+}
+
+tier_seed_grid <- expand.grid(
+  b = seq_along(target_costs),
+  s = seeds
+)
+
+# Number of parallel workers: respect the Slurm allocation if present,
+# otherwise fall back to (detected cores - 1), minimum 1.
+n_cores <- suppressWarnings(as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", unset = NA)))
+if (is.na(n_cores)) {
+  n_cores <- max(1L, parallel::detectCores() - 1L)
+}
+n_cores <- min(n_cores, nrow(tier_seed_grid))
+cat(sprintf("Running %d tier x seed combinations across %d core(s).\n", nrow(tier_seed_grid), n_cores))
+
+if (.Platform$OS.type == "unix") {
+  all_tier_results <- parallel::mclapply(
+    seq_len(nrow(tier_seed_grid)),
+    function(i) run_and_checkpoint_tier(tier_seed_grid$b[i], tier_seed_grid$s[i]),
+    mc.cores = n_cores,
+    mc.preschedule = FALSE
+  )
+} else {
+  # mclapply forks and is Linux/macOS-only; fall back to a serial,
+  # still-checkpointed loop if ever run on Windows.
+  all_tier_results <- lapply(
+    seq_len(nrow(tier_seed_grid)),
+    function(i) run_and_checkpoint_tier(tier_seed_grid$b[i], tier_seed_grid$s[i])
+  )
+}
+
+# mclapply returns a try-error object for a crashed worker instead of
+# stopping the whole job; detect and retry those serially. Already-
+# checkpointed combinations from other workers are simply reloaded.
+failed <- vapply(all_tier_results, function(x) inherits(x, "try-error"), logical(1))
+if (any(failed)) {
+  cat(sprintf("%d combination(s) failed in parallel and will be retried serially.\n", sum(failed)))
+  for (i in which(failed)) {
+    all_tier_results[[i]] <- run_and_checkpoint_tier(tier_seed_grid$b[i], tier_seed_grid$s[i])
   }
 }
 
@@ -423,4 +502,3 @@ ggsave(plot_cost_path, p_cost, width = 8, height = 5.5, dpi = 300)
 cat(sprintf("Cost-match check plot written to %s\n", plot_cost_path))
 
 cat("\nDone.\n")
-
