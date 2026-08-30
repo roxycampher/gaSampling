@@ -19,6 +19,7 @@ source("read_survey_data.R")
 source("sampling_frame.R")
 source("repair_joint.R")
 source("check_constraints.R")
+source("feasible_joint_start.R")
 
 ################################################################################
 # 0. OUTPUT PATHS
