@@ -1,5 +1,0 @@
-case,variance,total_n,total_c,total_cost,max_cost,feasible,rank,improvement_vs_equal_benchmark_pct
-4. Proportional allocation benchmark,2.6471094231023096,900,90,18000,20000,TRUE,1,19.899184375436576
-"2. Proportional c_h, optimised k_h",2.6602004534041783,900,90,18000,20000,TRUE,2,19.503053337031428
-"1. Equal c_h, optimised k_h",3.0857057543118103,900,90,18000,20000,TRUE,3,6.62737794642658
-3. Equal allocation benchmark,3.304722183491171,900,90,18000,20000,TRUE,4,0

@@ -1,5 +1,5 @@
 # =============================================================================
-# gasampling: feasible starting allocation for the joint c_h, k_h GA
+# gaSampling: feasible starting allocation for the joint c_h, k_h GA
 #
 # Finds a total number of sampled clusters and repaired starting allocation
 # that satisfy the joint GA feasibility constraints.
@@ -8,7 +8,7 @@
 allocate_ch_by_weight <- function(weights,
                                   total_c,
                                   upper,
-                                  lower = rep(1L, length(weights))) {
+                                  lower = rep(2L, length(weights))) {
   weights <- as.numeric(weights)
   upper <- as.integer(upper)
   lower <- as.integer(lower)
@@ -78,17 +78,19 @@ find_feasible_joint_start <- function(strata,
   }
 
   L <- nrow(strata)
-
-  if (is.null(lower_c)) lower_c <- rep(1L, L)
+  
+  # defaults
+  if (is.null(lower_c)) lower_c <- rep(2L, L)
   if (is.null(upper_c)) upper_c <- strata$C_h
   if (is.null(lower_k)) lower_k <- rep(1L, L)
   if (is.null(upper_k)) upper_k <- rep(total_n, L)
-
+  
+  # The different suggestions
   starting_cases <- list(
     "1. Proportional to stratum size" = strata$N_h,
     "2. Proportional to between-cluster SD" = sqrt(strata$sigma2_bh),
     "3. Neyman proportional" = strata$N_h * sqrt(strata$sigma2_bh),
-    "4. Equal c_h allocation" = rep(1, L)
+    "4. Equal c_h allocation" = rep(2, L)
   )
 
   if (!default_starting_suggestion %in% names(starting_cases)) {
@@ -99,7 +101,7 @@ find_feasible_joint_start <- function(strata,
   if (is.null(candidate_c)) {
     lower_total_c <- sum(lower_c)
     upper_total_c <- min(
-      sum(upper_c) - 1L,
+      sum(upper_c) - 2L,
       total_n,
       as.integer(max_candidate_c)
     )

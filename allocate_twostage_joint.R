@@ -16,7 +16,7 @@ allocate_twostage_ga_joint <- function(strata,
     stop("strata must contain C_h, the number of available clusters per stratum.")
   }
   
-  lower_c <- rep(1L, L)
+  lower_c <- rep(2L, L)
   lower_k <- rep(1L, L)
   upper_c <- strata$C_h
   upper_k <- rep(total_n, L)
@@ -80,7 +80,7 @@ allocate_twostage_ga_joint <- function(strata,
         strata = strata,
         total_n = total_n,
         max_cost = max_cost,
-        min_c_h = 1L,
+        min_c_h = 2L,
         min_k_h = 1L,
         max_c_h = upper_c,
         max_k_h = upper_k
@@ -121,7 +121,7 @@ allocate_twostage_ga_joint <- function(strata,
     max_cost = max_cost,
     cost_cluster = strata$cost_cluster,
     cost_unit = strata$cost_unit,
-    min_clusters = 1L,
+    min_clusters = 2L,
     min_units = 1L,
     max_clusters = upper_c,
     max_units = upper_k
@@ -148,7 +148,7 @@ allocate_twostage_ga_joint <- function(strata,
       max_cost = max_cost,
       cost_cluster = strata$cost_cluster,
       cost_unit = strata$cost_unit,
-      min_clusters = 1L,
+      min_clusters = 2L,
       min_units = 1L,
       max_clusters = upper_c,
       max_units = upper_k
@@ -197,7 +197,7 @@ allocate_twostage_ga_joint <- function(strata,
     max_cost = max_cost,
     cost_cluster = strata$cost_cluster,
     cost_unit = strata$cost_unit,
-    min_clusters = 1L,
+    min_clusters = 2L,
     min_units = 1L,
     max_clusters = upper_c,
     max_units = upper_k
