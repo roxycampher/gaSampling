@@ -143,7 +143,7 @@ prepare_sampling_frame <-
         C_h     <- nrow(h)                   # total clusters in stratum
         N_h     <- sum(h$N_hi)               # total SSUs in stratum
         N_bar_h <- mean(h$N_hi)              # mean cluster size
-        max_k_h <- min(h$N_hi)               # smallest cluster in stratum — realistic upper bound on k_h
+        max_k_h <- min(h$N_hi)               # largest cluster in stratum — realistic upper bound on k_h
         
         # Grand mean of stratum (SSU-weighted)
         ybar_bar_h <- sum(h$N_hi * h$ybar_hi) / N_h
