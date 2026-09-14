@@ -17,7 +17,7 @@ library(future.apply)
 joint_ga_pop_size <- 200
 joint_ga_maxiter <- 500
 joint_ga_run <- 50
-joint_ga_seed_count <- 1 # Eight configurations x 20 seeds = 160 GA runs
+joint_ga_seed_count <- 20 # Eight configurations x 20 seeds = 160 GA runs
 joint_ga_max_candidate_c <- 1000
 
 population_sizes <- c(50, 100, 200, 400)
@@ -66,13 +66,13 @@ cluster_cost <- 2500
 raw_data <- read.csv("ecdc-2021-public-v2.csv")
 raw_data$count_children_present <- readr::parse_number(raw_data$count_children_present)
 survey_data <- read_survey_data(raw_data, stratum_id = "province",
-                                cluster_id = "id_ward", y_var = "count_children_present",
-                                na_action = "warn")
+                               cluster_id = "id_ward", y_var = "count_children_present",
+                               na_action = "warn")
 
 frame_c_h <- frame_c(survey_data, max_cost, unit_cost, cluster_cost, total_n)
 full_frame <- prepare_sampling_frame(survey_data, y_var = "count_children_present",
-                                     total_c = frame_c_h, cost_cluster = cluster_cost,
-                                     cost_unit = unit_cost)
+                                total_c = frame_c_h, cost_cluster = cluster_cost,
+                                cost_unit = unit_cost)
 strata <- full_frame$strata
 strata # Check the strata before running the GA
 
@@ -199,58 +199,58 @@ ga_runs <- future.apply::future_lapply(
   seq_len(nrow(grid)),
   function(i) {
     
-    settings <- grid[i, ]
-    checkpoint <- file.path(checkpoint_dir, paste0(settings$phase, "_", settings$config_id,
-                                                   "_start", match(settings$starting_suggestion, names(starts)),
-                                                   "_seed", settings$seed, ".rds"))
+  settings <- grid[i, ]
+  checkpoint <- file.path(checkpoint_dir, paste0(settings$phase, "_", settings$config_id,
+                         "_start", match(settings$starting_suggestion, names(starts)),
+                         "_seed", settings$seed, ".rds"))
+  
+  if (file.exists(checkpoint)) return(readRDS(checkpoint))
+  
+  message("Run ", i, "/", nrow(grid), ": ", settings$config_id,
+          ", seed ", settings$seed, ", ", settings$starting_suggestion)
+  
+  start <- starts[[settings$starting_suggestion]]
+  start_variance <- variance_twostage(start$repaired_c_h, start$repaired_k_h,
+                                     strata$W_h, strata$sigma2_bh, strata$sigma2_wh)
+  
+  begin <- proc.time()[["elapsed"]]
+  
+  result <- tryCatch(allocate_twostage_ga_joint(
+    strata, total_n, max_cost, popSize = settings$popSize,
+    maxiter = settings$maxiter, run = settings$run, seed = settings$seed,
+    suggestion = c(start$repaired_c_h, start$repaired_k_h), monitor = FALSE),
+    error = function(e) e)
+  
+  elapsed <- proc.time()[["elapsed"]] - begin
+  
+  if (inherits(result, "error")) {
+    return(list(summary = cbind(settings, feasible = FALSE, elapsed_seconds = elapsed,
+                               error = conditionMessage(result)), allocation = NULL))}
     
-    if (file.exists(checkpoint)) return(readRDS(checkpoint))
-    
-    message("Run ", i, "/", nrow(grid), ": ", settings$config_id,
-            ", seed ", settings$seed, ", ", settings$starting_suggestion)
-    
-    start <- starts[[settings$starting_suggestion]]
-    start_variance <- variance_twostage(start$repaired_c_h, start$repaired_k_h,
-                                        strata$W_h, strata$sigma2_bh, strata$sigma2_wh)
-    
-    begin <- proc.time()[["elapsed"]]
-    
-    result <- tryCatch(allocate_twostage_ga_joint(
-      strata, total_n, max_cost, popSize = settings$popSize,
-      maxiter = settings$maxiter, run = settings$run, seed = settings$seed,
-      suggestion = c(start$repaired_c_h, start$repaired_k_h), monitor = FALSE),
-      error = function(e) e)
-    
-    elapsed <- proc.time()[["elapsed"]] - begin
-    
-    if (inherits(result, "error")) {
-      return(list(summary = cbind(settings, feasible = FALSE, elapsed_seconds = elapsed,
-                                  error = conditionMessage(result)), allocation = NULL))}
-    
-    summary <- cbind(settings, feasible = result$feasible, variance = result$variance,
-                     start_variance = start_variance,
-                     improvement_pct = 100 * (start_variance - result$variance) / start_variance,
-                     elapsed_seconds = elapsed, generations = result$ga_object@iter,
-                     fallback_used = result$fallback_used,
-                     total_n = result$total_n, total_cost = result$total_cost,
-                     sample_size_gap = result$total_n - total_n,
-                     repair_iterations = result$repair$iterations, error = NA_character_)
-    
-    allocation <- cbind(settings[rep(1, nrow(result$allocation)), ], result$allocation,
-                        feasible = result$feasible)
-    
-    saved <- list(summary = summary, allocation = allocation)
-    
-    # Interrupted writes leave only a temporary file, which is never reloaded.
-    temporary <- paste0(checkpoint, ".tmp")
-    saveRDS(saved, temporary)
-    if (!file.rename(temporary, checkpoint)) stop("Cannot save checkpoint: ", checkpoint)
-    saved
-  },                          # Ends function(i)
+  summary <- cbind(settings, feasible = result$feasible, variance = result$variance,
+                   start_variance = start_variance,
+                   improvement_pct = 100 * (start_variance - result$variance) / start_variance,
+                   elapsed_seconds = elapsed, generations = result$ga_object@iter,
+                   fallback_used = result$fallback_used,
+                   total_n = result$total_n, total_cost = result$total_cost,
+                   sample_size_gap = result$total_n - total_n,
+                   repair_iterations = result$repair$iterations, error = NA_character_)
+  
+  allocation <- cbind(settings[rep(1, nrow(result$allocation)), ], result$allocation,
+                      feasible = result$feasible)
+  
+  saved <- list(summary = summary, allocation = allocation)
+  
+  # Interrupted writes leave only a temporary file, which is never reloaded.
+  temporary <- paste0(checkpoint, ".tmp")
+  saveRDS(saved, temporary)
+  if (!file.rename(temporary, checkpoint)) stop("Cannot save checkpoint: ", checkpoint)
+  saved
+},                          # Ends function(i)
   future.seed = TRUE,
   future.packages = "GA",
   future.scheduling = 2
-)    
+  )    
 
 # Close the background workers once the runs finish.
 future::plan(future::sequential)
@@ -299,7 +299,7 @@ write.csv(allocation_summary, file.path(experiment_dir, "allocation_summary.csv"
 
 allocation_summary
 
-# Same-seed, same-start baseline comparison; only pairs with feasible outputs.
+# Same-seed, same-start baseline comparison (only pairs with feasible outputs)
 baseline <- run_summary |>
   filter(config_id == baseline_id) |>
   select(phase, seed, starting_suggestion, baseline_variance = variance,
@@ -308,7 +308,7 @@ baseline <- run_summary |>
 paired <- run_summary |>
   left_join(baseline, by = c("phase", "seed", "starting_suggestion")) |>
   mutate(variance_change_pct = ifelse(feasible & baseline_feasible,
-                                      100 * (variance / baseline_variance - 1), NA_real_))
+         100 * (variance / baseline_variance - 1), NA_real_))
 write.csv(paired, file.path(experiment_dir, "paired_comparisons.csv"), row.names = FALSE)
 
 paired
@@ -319,24 +319,24 @@ paired
 
 variance_plot <- ggplot2::ggplot(
   filter(run_summary, feasible), ggplot2::aes(config_id, variance)) +
-  ggplot2::geom_boxplot() + ggplot2::facet_wrap(~phase, scales = "free_x") +
-  ggplot2::coord_flip() + ggplot2::theme_bw() +
-  ggplot2::labs(x = "Configuration", y = "Variance (feasible runs only)")
+    ggplot2::geom_boxplot() + ggplot2::facet_wrap(~phase, scales = "free_x") +
+    ggplot2::coord_flip() + ggplot2::theme_bw() +
+    ggplot2::labs(x = "Configuration", y = "Variance (feasible runs only)")
 
 variance_plot
 
 feasibility_plot <- ggplot2::ggplot(configuration_summary,
-                                    ggplot2::aes(config_id, feasibility_rate)) + ggplot2::geom_col() +
-  ggplot2::facet_wrap(~phase, scales = "free_x") + ggplot2::coord_flip() +
-  ggplot2::ylim(0, 1) + ggplot2::theme_bw()
+  ggplot2::aes(config_id, feasibility_rate)) + ggplot2::geom_col() +
+    ggplot2::facet_wrap(~phase, scales = "free_x") + ggplot2::coord_flip() +
+    ggplot2::ylim(0, 1) + ggplot2::theme_bw()
 
 feasibility_plot
 
 runtime_plot <- ggplot2::ggplot(configuration_summary,
-                                ggplot2::aes(median_seconds, median_variance, label = config_id)) +
-  ggplot2::geom_point() + ggplot2::geom_text(vjust = -0.7, size = 3, check_overlap = TRUE) +
-  ggplot2::facet_wrap(~phase) + ggplot2::theme_bw() +
-  ggplot2::labs(x = "Median runtime (seconds)", y = "Median feasible variance")
+  ggplot2::aes(median_seconds, median_variance, label = config_id)) +
+    ggplot2::geom_point() + ggplot2::geom_text(vjust = -0.7, size = 3, check_overlap = TRUE) +
+    ggplot2::facet_wrap(~phase) + ggplot2::theme_bw() +
+    ggplot2::labs(x = "Median runtime (seconds)", y = "Median feasible variance")
 
 runtime_plot
 
@@ -356,7 +356,7 @@ paired_variance_plot
 # Fallback means the GA returned the starting allocation after its own
 # repaired solution failed the feasibility check. Failed runs are excluded.
 fallback_plot <- ggplot2::ggplot(configuration_summary,
-                                 ggplot2::aes(config_id, fallback_rate)) +
+  ggplot2::aes(config_id, fallback_rate)) +
   ggplot2::geom_col(na.rm = TRUE) +
   ggplot2::facet_wrap(~phase, scales = "free_x") +
   ggplot2::coord_flip() + ggplot2::ylim(0, 1) + ggplot2::theme_bw() +
@@ -367,7 +367,7 @@ fallback_plot
 # Include completed infeasible runs too (they still used computation)
 # Red crosses mark the maximum generations allowed for each configuration.
 generation_plot <- ggplot2::ggplot(run_summary,
-                                   ggplot2::aes(config_id, generations)) +
+  ggplot2::aes(config_id, generations)) +
   ggplot2::geom_boxplot(na.rm = TRUE) +
   ggplot2::geom_point(size = 1, alpha = 0.5, na.rm = TRUE) +
   ggplot2::geom_point(data = configuration_summary,
@@ -384,7 +384,7 @@ allocation_plot_data <- allocation_results |>
   mutate(across(c(c_h, k_h, n_h), ~ifelse(feasible, .x, NA_real_)))
 
 ch_stability_plot <- ggplot2::ggplot(allocation_plot_data,
-                                     ggplot2::aes(config_id, c_h)) +
+  ggplot2::aes(config_id, c_h)) +
   ggplot2::geom_boxplot(na.rm = TRUE) +
   ggplot2::geom_point(size = 1, alpha = 0.4, na.rm = TRUE) +
   ggplot2::facet_wrap(~starting_suggestion + stratum, scales = "free_y", ncol = 3) +
@@ -395,7 +395,7 @@ ch_stability_plot <- ggplot2::ggplot(allocation_plot_data,
 ch_stability_plot
 
 kh_stability_plot <- ggplot2::ggplot(allocation_plot_data,
-                                     ggplot2::aes(config_id, k_h)) +
+  ggplot2::aes(config_id, k_h)) +
   ggplot2::geom_boxplot(na.rm = TRUE) +
   ggplot2::geom_point(size = 1, alpha = 0.4, na.rm = TRUE) +
   ggplot2::facet_wrap(~starting_suggestion + stratum, scales = "free_y", ncol = 3) +
@@ -406,7 +406,7 @@ kh_stability_plot <- ggplot2::ggplot(allocation_plot_data,
 kh_stability_plot
 
 nh_stability_plot <- ggplot2::ggplot(allocation_plot_data,
-                                     ggplot2::aes(config_id, n_h)) +
+  ggplot2::aes(config_id, n_h)) +
   ggplot2::geom_boxplot(na.rm = TRUE) +
   ggplot2::geom_point(size = 1, alpha = 0.4, na.rm = TRUE) +
   ggplot2::facet_wrap(~starting_suggestion + stratum, scales = "free_y", ncol = 3) +
