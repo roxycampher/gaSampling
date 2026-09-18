@@ -10,6 +10,7 @@ library(readr)
 library(R2BEAT)
 library(ggplot2)
 library(parallel)
+library(scales)
 
 source("variance_twostage.R")
 source("allocate_twostage_joint.R")
@@ -21,6 +22,7 @@ source("repair_joint.R")
 source("check_constraints.R")
 source("feasible_joint_start.R")
 
+
 ################################################################################
 # 0. OUTPUT PATHS
 ################################################################################
@@ -31,6 +33,7 @@ dir.create(checkpoint_dir, recursive = TRUE, showWarnings = FALSE)
 
 table_path <- file.path(results_dir, "ga_vs_r2beat_comparison.csv")
 plot_variance_path <- file.path(results_dir, "variance_comparison.png")
+plot_variance_lines_path <- file.path(results_dir, "variance_by_seed_lines.png")
 plot_cost_path <- file.path(results_dir, "cost_match_check.png")
 
 ################################################################################
@@ -180,7 +183,9 @@ integerize_r2beat_allocation <- function(r2beat_alloc, strata_df, target_n,
 }
 
 run_one_tier <- function(b, seed, current_max_cost, target_n, cost_cluster_val, cost_unit_val,
-                         survey_data, r2b_input, province_lookup, minimum_r2b) {
+                         survey_data, r2b_input, province_lookup, minimum_r2b,
+                         ga_popSize = 100, ga_maxiter = 500, ga_run = 30,
+                         use_neyman_start = TRUE) {
   
   cat(sprintf("\n======================================================\n"))
   cat(sprintf(" TIER %d | SEED %d | Budget: R%.0f | target_n: %d | C_cluster: R%.0f | C_unit: R%.0f\n",
@@ -223,34 +228,83 @@ run_one_tier <- function(b, seed, current_max_cost, target_n, cost_cluster_val, 
   # The default_starting_suggestion below selects "3. Neyman proportional".
   # ---------------------------------------------------------------------------
   
-  neyman_start <- find_feasible_joint_start(
-    strata = strata,
-    total_n = target_n,
-    max_cost = current_max_cost,
-    default_starting_suggestion = "3. Neyman proportional",
-    require_all_starts = FALSE
-  )
+  no_neyman_start <- function() {
+    list(
+      neyman_start = list(starting_suggestion = NA_character_, total_c = NA_integer_),
+      neyman_start_diag = data.frame(
+        repaired_total_n = NA_integer_,
+        repaired_total_cost = NA_real_,
+        sample_size_gap = NA_integer_,
+        feasible = NA
+      ),
+      ga_suggestion = NULL
+    )
+  }
   
-  neyman_start_diag <- neyman_start$diagnostics |>
-    filter(starting_suggestion == "3. Neyman proportional")
-  
-  cat(sprintf(
-    "GA Neyman start: c = %d, n = %d, cost = %.0f, sample gap = %d, feasible = %s\n",
-    neyman_start$total_c,
-    neyman_start_diag$repaired_total_n,
-    neyman_start_diag$repaired_total_cost,
-    neyman_start_diag$sample_size_gap,
-    neyman_start_diag$feasible
-  ))
+  if (use_neyman_start) {
+    neyman_attempt <- tryCatch(
+      {
+        ns <- find_feasible_joint_start(
+          strata = strata,
+          total_n = target_n,
+          max_cost = current_max_cost,
+          max_candidate_c = full_frame_c,
+          default_starting_suggestion = "3. Neyman proportional",
+          require_all_starts = FALSE
+        )
+        
+        ns_diag <- ns$diagnostics |>
+          filter(starting_suggestion == "3. Neyman proportional")
+        
+        cat(sprintf(
+          "GA Neyman start: c = %d, n = %d, cost = %.0f, sample gap = %d, feasible = %s\n",
+          ns$total_c,
+          ns_diag$repaired_total_n,
+          ns_diag$repaired_total_cost,
+          ns_diag$sample_size_gap,
+          ns_diag$feasible
+        ))
+        
+        list(neyman_start = ns, neyman_start_diag = ns_diag, ga_suggestion = ns$suggestion)
+      },
+      error = function(e) {
+        # find_feasible_joint_start() can error outright (rather than return
+        # an infeasible result) when no repaired shape fits this tier's
+        # budget/target_n/cost combination. Rather than losing the whole
+        # tier, fall back to letting the GA build its own internal start —
+        # same fallback used when use_neyman_start = FALSE.
+        warning(sprintf(
+          "Tier %d, seed %d: find_feasible_joint_start() failed (%s) — falling back to GA default start.",
+          b, seed, conditionMessage(e)
+        ))
+        no_neyman_start()
+      }
+    )
+    neyman_start <- neyman_attempt$neyman_start
+    neyman_start_diag <- neyman_attempt$neyman_start_diag
+    ga_suggestion <- neyman_attempt$ga_suggestion
+  } else {
+    # Quick-test mode: skip find_feasible_joint_start() entirely and let
+    # allocate_twostage_ga_joint() build its own internal starting point.
+    cat("Skipping Neyman starting suggestion (use_neyman_start = FALSE).\n")
+    fallback <- no_neyman_start()
+    neyman_start <- fallback$neyman_start
+    neyman_start_diag <- fallback$neyman_start_diag
+    ga_suggestion <- fallback$ga_suggestion
+  }
   
   ga_result <- allocate_twostage_ga_joint(
     strata   = strata,
     total_n  = target_n,
     max_cost = current_max_cost,
-    popSize  = 100,
-    maxiter  = 500,
-    run      = 30,
-    seed     = seed
+    popSize  = ga_popSize,
+    maxiter  = ga_maxiter,
+    run      = ga_run,
+    seed     = seed,
+    
+    # This is where the Neyman helper output enters the GA (NULL when
+    # use_neyman_start = FALSE, letting the GA build its own start).
+    suggestion = ga_suggestion
   )
   
   # if the allocation overshoots
@@ -265,7 +319,7 @@ run_one_tier <- function(b, seed, current_max_cost, target_n, cost_cluster_val, 
     return(NULL)
   }
   
-  cat(sprintf("GA Realized Cost: $%.0f | GA Variance: %.4f\n", ga_result$total_cost, ga_result$variance))
+  cat(sprintf("GA Realized Cost: R%.0f | GA Variance: %.4f\n", ga_result$total_cost, ga_result$variance))
   
   r2beat_matched <- calibrate_r2beat_bisection(
     target_cost  = ga_result$total_cost,
@@ -313,6 +367,12 @@ run_one_tier <- function(b, seed, current_max_cost, target_n, cost_cluster_val, 
     GA_Cost                 = ga_result$total_cost,
     R2BEAT_Cost_Cont        = r2beat_matched$cost,
     R2BEAT_Cost_Integer     = cost_r2beat_integer,
+    GA_Starting_Suggestion  = neyman_start$starting_suggestion,
+    GA_Start_PSU            = neyman_start$total_c,
+    GA_Start_n              = neyman_start_diag$repaired_total_n,
+    GA_Start_Cost           = neyman_start_diag$repaired_total_cost,
+    GA_Start_Sample_Gap     = neyman_start_diag$sample_size_gap,
+    GA_Start_Feasible       = neyman_start_diag$feasible,
     GA_PSU                  = sum(ga_result$allocation$c_h),
     R2BEAT_PSU_Cont         = sum(r2beat_matched$alloc$c_h_r2beat),
     R2BEAT_PSU_Integer      = sum(r2beat_integer$c_h),
@@ -330,10 +390,10 @@ run_one_tier <- function(b, seed, current_max_cost, target_n, cost_cluster_val, 
 # 3. TIER DEFINITIONS
 ################################################################################
 
-target_costs      <- c(500000, 1000000, 2000000, 5000000, 10000000)
-target_n_vec      <- c(  1000,    2500,    5000,   15000,    35000)
-cost_cluster_vec  <- c(   500,    1000,    1500,    2000,     3000)
-cost_unit_vec     <- c(    50,     100,     120,     150,      200)
+target_costs      <- c(1000000, 3000000, 5000000, 7000000, 10000000)
+target_n_vec      <- c(   2500,   10000,   17500,   25000,    35000)
+cost_cluster_vec  <- c(   1000,    1500,    2000,    2500,     3000)
+cost_unit_vec     <- c(    100,     125,     150,     175,      200)
 
 seeds <- c(101, 202, 303, 404, 505)   # 5 seeds per tier
 
@@ -452,7 +512,11 @@ variance_long <- final_results |>
                     R2BEAT_Variance_Cont        = "R2BEAT (continuous)",
                     R2BEAT_Variance_Integer     = "R2BEAT (integer, cost-aware)"
     ),
-    Budget_Label = factor(Budget_Target, levels = sort(unique(Budget_Target)))
+    Budget_Label = factor(
+      Budget_Target,
+      levels = sort(unique(Budget_Target)),
+      labels = scales::label_number(prefix = "R", big.mark = ",")(sort(unique(Budget_Target)))
+    )
   )
 
 p_variance <- ggplot(variance_long, aes(x = Budget_Label, y = Variance, fill = Method)) +
@@ -460,7 +524,7 @@ p_variance <- ggplot(variance_long, aes(x = Budget_Label, y = Variance, fill = M
   labs(
     title = "Variance at matched cost: GA vs R2BEAT, across seeds",
     subtitle = sprintf("%d seeds per tier — GA variance only meaningful where GA_Feasible is TRUE", length(unique(final_results$Seed))),
-    x = "Budget tier (matched across methods within tier)",
+    x = "Budget tier (Rand, matched across methods within tier)",
     y = "Total variance (var_total_h summed)"
   ) +
   theme_minimal(base_size = 13) +
@@ -468,6 +532,34 @@ p_variance <- ggplot(variance_long, aes(x = Budget_Label, y = Variance, fill = M
 
 ggsave(plot_variance_path, p_variance, width = 9, height = 5.5, dpi = 300)
 cat(sprintf("Variance plot written to %s\n", plot_variance_path))
+
+# --- 6a2. Variance by seed across budget tiers (line plot) ---
+# Thin lines trace each individual seed's trajectory across tiers; bold
+# lines show the mean per method. Complements the boxplot above: the
+# boxplot shows spread at a given budget, this shows whether any single
+# seed is consistently high/low across the whole tier range, or whether
+# seeds cross over unpredictably (a stability concern the boxplot alone
+# wouldn't reveal).
+p_variance_lines <- ggplot(
+  variance_long,
+  aes(x = Budget_Target, y = Variance, color = Method, group = interaction(Method, Seed))
+) +
+  geom_line(alpha = 0.35, linewidth = 0.6) +
+  geom_point(alpha = 0.5, size = 1.5) +
+  stat_summary(aes(group = Method), fun = mean, geom = "line", linewidth = 1.4) +
+  stat_summary(aes(group = Method), fun = mean, geom = "point", size = 3) +
+  scale_x_continuous(labels = scales::label_number(prefix = "R", big.mark = ",")) +
+  labs(
+    title = "Variance by seed across budget tiers",
+    subtitle = "Thin lines = individual seeds; bold lines = mean across seeds per method",
+    x = "Budget tier (Rand)",
+    y = "Total variance (var_total_h summed)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "bottom")
+
+ggsave(plot_variance_lines_path, p_variance_lines, width = 9, height = 5.5, dpi = 300)
+cat(sprintf("Per-seed variance line plot written to %s\n", plot_variance_lines_path))
 
 # --- 6b. Cost-match sanity check (confirms bisection actually matched budgets) ---
 cost_long <- final_results |>
@@ -488,13 +580,13 @@ cost_long <- final_results |>
 p_cost <- ggplot(cost_long, aes(x = Budget_Target, y = RealizedCost, color = Method)) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey60") +
   geom_point(size = 3) +
-  scale_x_continuous() +
-  scale_y_continuous() +
+  scale_x_continuous(labels = scales::label_number(prefix = "R", big.mark = ",")) +
+  scale_y_continuous(labels = scales::label_number(prefix = "R", big.mark = ",")) +
   labs(
     title = "Cost-matching sanity check",
     subtitle = "Points should sit on the dashed line:confirms the bisection actually matched budgets",
-    x = "Target budget for tier",
-    y = "Realized cost"
+    x = "Target budget for tier (Rand)",
+    y = "Realized cost (Rand)"
   ) +
   theme_minimal(base_size = 13) +
   theme(legend.position = "bottom")

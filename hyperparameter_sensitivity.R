@@ -5,9 +5,7 @@ library(readr)
 library(GA)
 library(ggplot2)
 library(tidyr)
-library(future)
-library(parallelly)
-library(future.apply)
+library(parallel)
 
 # ------------------------------------------------------------
 # Hyperparameter settings
@@ -66,13 +64,13 @@ cluster_cost <- 2500
 raw_data <- read.csv("ecdc-2021-public-v2.csv")
 raw_data$count_children_present <- readr::parse_number(raw_data$count_children_present)
 survey_data <- read_survey_data(raw_data, stratum_id = "province",
-                               cluster_id = "id_ward", y_var = "count_children_present",
-                               na_action = "warn")
+                                cluster_id = "id_ward", y_var = "count_children_present",
+                                na_action = "warn")
 
 frame_c_h <- frame_c(survey_data, max_cost, unit_cost, cluster_cost, total_n)
 full_frame <- prepare_sampling_frame(survey_data, y_var = "count_children_present",
-                                total_c = frame_c_h, cost_cluster = cluster_cost,
-                                cost_unit = unit_cost)
+                                     total_c = frame_c_h, cost_cluster = cluster_cost,
+                                     cost_unit = unit_cost)
 strata <- full_frame$strata
 strata # Check the strata before running the GA
 
@@ -181,83 +179,100 @@ write.csv(grid, file.path(experiment_dir, "run_grid.csv"), row.names = FALSE)
 #                    PARALELL RUNS
 ################################################################################
 
-number_of_workers <- max(
-  1L,
-  min(4L, parallelly::availableCores() - 1L)
-)
+number_of_workers <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", unset = NA))
+if (is.na(number_of_workers)) {
+  number_of_workers <- max(1L, min(4L, parallel::detectCores() - 1L))
+}
+message("Using ", number_of_workers, " workers (mclapply).")
 
-future::plan(
-  future::multisession,
-  workers = number_of_workers
-)
+# mclapply's forked workers swallow warnings/cat()/message() output when run
+# under R CMD BATCH, so each run appends its own status line to a log file
+# rather than relying on console output to know which combinations completed.
+progress_log <- file.path(experiment_dir, "progress.log")
 
 ################################################################################
 #                    MULTIPLE RUN TESTS
 ################################################################################
 
-ga_runs <- future.apply::future_lapply(
+ga_runs <- parallel::mclapply(
   seq_len(nrow(grid)),
   function(i) {
     
-  settings <- grid[i, ]
-  checkpoint <- file.path(checkpoint_dir, paste0(settings$phase, "_", settings$config_id,
-                         "_start", match(settings$starting_suggestion, names(starts)),
-                         "_seed", settings$seed, ".rds"))
-  
-  if (file.exists(checkpoint)) return(readRDS(checkpoint))
-  
-  message("Run ", i, "/", nrow(grid), ": ", settings$config_id,
-          ", seed ", settings$seed, ", ", settings$starting_suggestion)
-  
-  start <- starts[[settings$starting_suggestion]]
-  start_variance <- variance_twostage(start$repaired_c_h, start$repaired_k_h,
-                                     strata$W_h, strata$sigma2_bh, strata$sigma2_wh)
-  
-  begin <- proc.time()[["elapsed"]]
-  
-  result <- tryCatch(allocate_twostage_ga_joint(
-    strata, total_n, max_cost, popSize = settings$popSize,
-    maxiter = settings$maxiter, run = settings$run, seed = settings$seed,
-    suggestion = c(start$repaired_c_h, start$repaired_k_h), monitor = FALSE),
-    error = function(e) e)
-  
-  elapsed <- proc.time()[["elapsed"]] - begin
-  
-  if (inherits(result, "error")) {
-    return(list(summary = cbind(settings, feasible = FALSE, elapsed_seconds = elapsed,
-                               error = conditionMessage(result)), allocation = NULL))}
+    settings <- grid[i, ]
+    checkpoint <- file.path(checkpoint_dir, paste0(settings$phase, "_", settings$config_id,
+                                                   "_start", match(settings$starting_suggestion, names(starts)),
+                                                   "_seed", settings$seed, ".rds"))
     
-  summary <- cbind(settings, feasible = result$feasible, variance = result$variance,
-                   start_variance = start_variance,
-                   improvement_pct = 100 * (start_variance - result$variance) / start_variance,
-                   elapsed_seconds = elapsed, generations = result$ga_object@iter,
-                   fallback_used = result$fallback_used,
-                   total_n = result$total_n, total_cost = result$total_cost,
-                   sample_size_gap = result$total_n - total_n,
-                   repair_iterations = result$repair$iterations, error = NA_character_)
-  
-  allocation <- cbind(settings[rep(1, nrow(result$allocation)), ], result$allocation,
-                      feasible = result$feasible)
-  
-  saved <- list(summary = summary, allocation = allocation)
-  
-  # Interrupted writes leave only a temporary file, which is never reloaded.
-  temporary <- paste0(checkpoint, ".tmp")
-  saveRDS(saved, temporary)
-  if (!file.rename(temporary, checkpoint)) stop("Cannot save checkpoint: ", checkpoint)
-  saved
-},                          # Ends function(i)
-  future.seed = TRUE,
-  future.packages = "GA",
-  future.scheduling = 2
-  )    
+    if (file.exists(checkpoint)) return(readRDS(checkpoint))
+    
+    cat(sprintf("[%s] start run %d/%d: %s, seed %s, %s\n",
+                format(Sys.time(), "%H:%M:%S"), i, nrow(grid), settings$config_id,
+                settings$seed, settings$starting_suggestion),
+        file = progress_log, append = TRUE)
+    
+    start <- starts[[settings$starting_suggestion]]
+    start_variance <- variance_twostage(start$repaired_c_h, start$repaired_k_h,
+                                        strata$W_h, strata$sigma2_bh, strata$sigma2_wh)
+    
+    begin <- proc.time()[["elapsed"]]
+    
+    result <- tryCatch(allocate_twostage_ga_joint(
+      strata, total_n, max_cost, popSize = settings$popSize,
+      maxiter = settings$maxiter, run = settings$run, seed = settings$seed,
+      suggestion = c(start$repaired_c_h, start$repaired_k_h), monitor = FALSE),
+      error = function(e) e)
+    
+    elapsed <- proc.time()[["elapsed"]] - begin
+    
+    if (inherits(result, "error")) {
+      return(list(summary = cbind(settings, feasible = FALSE, elapsed_seconds = elapsed,
+                                  error = conditionMessage(result)), allocation = NULL))}
+    
+    summary <- cbind(settings, feasible = result$feasible, variance = result$variance,
+                     start_variance = start_variance,
+                     improvement_pct = 100 * (start_variance - result$variance) / start_variance,
+                     elapsed_seconds = elapsed, generations = result$ga_object@iter,
+                     fallback_used = result$fallback_used,
+                     total_n = result$total_n, total_cost = result$total_cost,
+                     sample_size_gap = result$total_n - total_n,
+                     repair_iterations = result$repair$iterations, error = NA_character_)
+    
+    allocation <- cbind(settings[rep(1, nrow(result$allocation)), ], result$allocation,
+                        feasible = result$feasible)
+    
+    saved <- list(summary = summary, allocation = allocation)
+    
+    # Interrupted writes leave only a temporary file, which is never reloaded.
+    temporary <- paste0(checkpoint, ".tmp")
+    saveRDS(saved, temporary)
+    if (!file.rename(temporary, checkpoint)) stop("Cannot save checkpoint: ", checkpoint)
+    
+    cat(sprintf("[%s] done run %d/%d: %s, seed %s, %s, feasible=%s, elapsed=%.1fs\n",
+                format(Sys.time(), "%H:%M:%S"), i, nrow(grid), settings$config_id,
+                settings$seed, settings$starting_suggestion,
+                isTRUE(saved$summary$feasible[1]), elapsed),
+        file = progress_log, append = TRUE)
+    saved
+  },                          # Ends function(i)
+  mc.cores = number_of_workers,
+  mc.preschedule = FALSE,
+  mc.set.seed = TRUE
+)
 
-# Close the background workers once the runs finish.
-future::plan(future::sequential)
+# Flag any run that mclapply itself failed on (e.g. a worker crash/OOM kill),
+# which comes back as a try-error rather than the expected list structure —
+# distinct from the tryCatch()-handled GA errors already logged per run above.
+mclapply_failures <- which(vapply(ga_runs, function(x) inherits(x, "try-error"), logical(1)))
+if (length(mclapply_failures) > 0) {
+  warning("mclapply worker failure on run(s): ", paste(mclapply_failures, collapse = ", "),
+          " -- rerun the script to retry from checkpoint.")
+}
 
 # ------------------------------------------------------------
 # Run-level results
 # ------------------------------------------------------------
+if (length(mclapply_failures) > 0) ga_runs <- ga_runs[-mclapply_failures]
+
 run_summary <- bind_rows(lapply(ga_runs, function(x) x$summary))
 run_summary
 
@@ -308,7 +323,7 @@ baseline <- run_summary |>
 paired <- run_summary |>
   left_join(baseline, by = c("phase", "seed", "starting_suggestion")) |>
   mutate(variance_change_pct = ifelse(feasible & baseline_feasible,
-         100 * (variance / baseline_variance - 1), NA_real_))
+                                      100 * (variance / baseline_variance - 1), NA_real_))
 write.csv(paired, file.path(experiment_dir, "paired_comparisons.csv"), row.names = FALSE)
 
 paired
@@ -319,24 +334,24 @@ paired
 
 variance_plot <- ggplot2::ggplot(
   filter(run_summary, feasible), ggplot2::aes(config_id, variance)) +
-    ggplot2::geom_boxplot() + ggplot2::facet_wrap(~phase, scales = "free_x") +
-    ggplot2::coord_flip() + ggplot2::theme_bw() +
-    ggplot2::labs(x = "Configuration", y = "Variance (feasible runs only)")
+  ggplot2::geom_boxplot() + ggplot2::facet_wrap(~phase, scales = "free_x") +
+  ggplot2::coord_flip() + ggplot2::theme_bw() +
+  ggplot2::labs(x = "Configuration", y = "Variance (feasible runs only)")
 
 variance_plot
 
 feasibility_plot <- ggplot2::ggplot(configuration_summary,
-  ggplot2::aes(config_id, feasibility_rate)) + ggplot2::geom_col() +
-    ggplot2::facet_wrap(~phase, scales = "free_x") + ggplot2::coord_flip() +
-    ggplot2::ylim(0, 1) + ggplot2::theme_bw()
+                                    ggplot2::aes(config_id, feasibility_rate)) + ggplot2::geom_col() +
+  ggplot2::facet_wrap(~phase, scales = "free_x") + ggplot2::coord_flip() +
+  ggplot2::ylim(0, 1) + ggplot2::theme_bw()
 
 feasibility_plot
 
 runtime_plot <- ggplot2::ggplot(configuration_summary,
-  ggplot2::aes(median_seconds, median_variance, label = config_id)) +
-    ggplot2::geom_point() + ggplot2::geom_text(vjust = -0.7, size = 3, check_overlap = TRUE) +
-    ggplot2::facet_wrap(~phase) + ggplot2::theme_bw() +
-    ggplot2::labs(x = "Median runtime (seconds)", y = "Median feasible variance")
+                                ggplot2::aes(median_seconds, median_variance, label = config_id)) +
+  ggplot2::geom_point() + ggplot2::geom_text(vjust = -0.7, size = 3, check_overlap = TRUE) +
+  ggplot2::facet_wrap(~phase) + ggplot2::theme_bw() +
+  ggplot2::labs(x = "Median runtime (seconds)", y = "Median feasible variance")
 
 runtime_plot
 
@@ -356,7 +371,7 @@ paired_variance_plot
 # Fallback means the GA returned the starting allocation after its own
 # repaired solution failed the feasibility check. Failed runs are excluded.
 fallback_plot <- ggplot2::ggplot(configuration_summary,
-  ggplot2::aes(config_id, fallback_rate)) +
+                                 ggplot2::aes(config_id, fallback_rate)) +
   ggplot2::geom_col(na.rm = TRUE) +
   ggplot2::facet_wrap(~phase, scales = "free_x") +
   ggplot2::coord_flip() + ggplot2::ylim(0, 1) + ggplot2::theme_bw() +
@@ -367,7 +382,7 @@ fallback_plot
 # Include completed infeasible runs too (they still used computation)
 # Red crosses mark the maximum generations allowed for each configuration.
 generation_plot <- ggplot2::ggplot(run_summary,
-  ggplot2::aes(config_id, generations)) +
+                                   ggplot2::aes(config_id, generations)) +
   ggplot2::geom_boxplot(na.rm = TRUE) +
   ggplot2::geom_point(size = 1, alpha = 0.5, na.rm = TRUE) +
   ggplot2::geom_point(data = configuration_summary,
@@ -384,7 +399,7 @@ allocation_plot_data <- allocation_results |>
   mutate(across(c(c_h, k_h, n_h), ~ifelse(feasible, .x, NA_real_)))
 
 ch_stability_plot <- ggplot2::ggplot(allocation_plot_data,
-  ggplot2::aes(config_id, c_h)) +
+                                     ggplot2::aes(config_id, c_h)) +
   ggplot2::geom_boxplot(na.rm = TRUE) +
   ggplot2::geom_point(size = 1, alpha = 0.4, na.rm = TRUE) +
   ggplot2::facet_wrap(~starting_suggestion + stratum, scales = "free_y", ncol = 3) +
@@ -395,7 +410,7 @@ ch_stability_plot <- ggplot2::ggplot(allocation_plot_data,
 ch_stability_plot
 
 kh_stability_plot <- ggplot2::ggplot(allocation_plot_data,
-  ggplot2::aes(config_id, k_h)) +
+                                     ggplot2::aes(config_id, k_h)) +
   ggplot2::geom_boxplot(na.rm = TRUE) +
   ggplot2::geom_point(size = 1, alpha = 0.4, na.rm = TRUE) +
   ggplot2::facet_wrap(~starting_suggestion + stratum, scales = "free_y", ncol = 3) +
@@ -406,7 +421,7 @@ kh_stability_plot <- ggplot2::ggplot(allocation_plot_data,
 kh_stability_plot
 
 nh_stability_plot <- ggplot2::ggplot(allocation_plot_data,
-  ggplot2::aes(config_id, n_h)) +
+                                     ggplot2::aes(config_id, n_h)) +
   ggplot2::geom_boxplot(na.rm = TRUE) +
   ggplot2::geom_point(size = 1, alpha = 0.4, na.rm = TRUE) +
   ggplot2::facet_wrap(~starting_suggestion + stratum, scales = "free_y", ncol = 3) +
