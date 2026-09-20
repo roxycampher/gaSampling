@@ -5,8 +5,8 @@ library(ggplot2)
 # ------------------------------------------------------------
 # Folders and appearance
 # ------------------------------------------------------------
-input_dir <- "C:/Users/roxyc/OneDrive - University of Cape Town/Documents/UCT/2026/Project/gaSampling/hyperparameter_sensitivity_results/30b01c7d0c32d12d67f7c78a439232c4"
-output_dir <- "C:/Users/roxyc/OneDrive - University of Cape Town/Documents/UCT/2026/Project/edit/hyperparameter_colour_plots/30b01c7d0c32d12d67f7c78a439232c4"
+input_dir <- "C:/Users/roxyc/OneDrive - University of Cape Town/Documents/UCT/2026/Project/gaSampling/hyperparameter_sensitivity_results"
+output_dir <- "C:/Users/roxyc/OneDrive - University of Cape Town/Documents/UCT/2026/Project/gaSampling/hyperparameter_colour_plots"
 plot_dpi <- 200
 
 # ------------------------------------------------------------
@@ -207,3 +207,4 @@ for (name in names(plots)) {
   }
 }
 message("Colour plots saved to: ", normalizePath(output_dir))
+
