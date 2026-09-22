@@ -127,6 +127,9 @@ allocate_twostage_ga_joint <- function(strata,
     max_units = upper_k
   )
   
+  fallback_used <- FALSE # Track if a fallback was used
+  
+  # Fallback condition
   if (!repaired_check$feasible && !is.null(suggestion)) {
     suggestion_repaired <- repair_ckh(
       c_h = suggestion[1:L],
@@ -156,6 +159,7 @@ allocate_twostage_ga_joint <- function(strata,
     
     if (suggestion_check$feasible) {
       repaired <- suggestion_repaired
+      fallback_used <- TRUE # When the starting suggestion replaces the solution
     }
   }
   
@@ -207,6 +211,7 @@ allocate_twostage_ga_joint <- function(strata,
   
   list(
     feasible         = is_feasible,
+    fallback_used    = fallback_used,
     variance         = total_variance,
     between_variance = total_between,    
     within_variance  = total_within,     
