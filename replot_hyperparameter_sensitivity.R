@@ -21,13 +21,13 @@ read_results <- function(filename, columns) {
   data
 }
 run_summary <- read_results("run_summary.csv",
-  c("config_id", "phase", "feasible", "variance", "generations", "popSize", "maxiter", "run"))
+                            c("config_id", "phase", "feasible", "variance", "generations", "popSize", "maxiter", "run"))
 configuration_summary <- read_results("configuration_summary.csv",
-  c("config_id", "phase", "feasibility_rate", "fallback_rate", "median_seconds", "median_variance", "maxiter"))
+                                      c("config_id", "phase", "feasibility_rate", "fallback_rate", "median_seconds", "median_variance", "maxiter"))
 paired <- read_results("paired_comparisons.csv",
-  c("config_id", "phase", "starting_suggestion", "variance_change_pct"))
+                       c("config_id", "phase", "starting_suggestion", "variance_change_pct"))
 allocation_results <- read_results("allocations.csv",
-  c("config_id", "phase", "starting_suggestion", "stratum", "feasible", "c_h", "k_h", "n_h"))
+                                   c("config_id", "phase", "starting_suggestion", "stratum", "feasible", "c_h", "k_h", "n_h"))
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 # ------------------------------------------------------------
@@ -85,16 +85,16 @@ boxplot_by_population <- function(data, variable, title, y_label) {
                  na.rm = TRUE) +
     colour_scales() + population_facets(data) + plot_theme +
     labs(title = title, x = "Stopping patience", y = y_label,
-         caption = "Absent groups represent untested combinations or missing results.")
+         caption = "Absent groups represent untested combinations.")
 }
 
 # ------------------------------------------------------------
 # Variance, paired changes, runtime and generations
 # ------------------------------------------------------------
 variance_plot <- boxplot_by_population(filter(run_summary, feasible), "variance",
-  "Variance by population size", "Final variance (feasible runs)")
+                                       "Variance by population size.", "Final variance (feasible runs)")
 paired_variance_plot <- boxplot_by_population(paired, "variance_change_pct",
-  "Paired comparison with baseline", "Variance change from baseline (%)") +
+                                              "Paired comparison with baseline.", "Variance change from baseline (%)") +
   geom_hline(yintercept = 0, linetype = "dashed", colour = "grey45") +
   labs(subtitle = "Negative values favour the configuration; feasible pairs only")
 # Individual run times, not configuration medians, form the runtime boxes.
@@ -102,12 +102,12 @@ runtime_data <- run_summary |>
   filter(is.na(error)) |>
   mutate(runtime_hours = elapsed_seconds / 3600)
 runtime_plot <- boxplot_by_population(runtime_data, "runtime_hours",
-  "Runtime by population size", "Runtime (hours)")
+                                      "Runtime by population size.", "Runtime (hours)")
 generation_plot <- boxplot_by_population(run_summary, "generations",
-  "Generations used", "Actual generations") +
+                                         "Generations used.", "Actual generations") +
   geom_point(aes(y = maxiter), position = position_dodge(0.8),
              shape = 4, size = 2, na.rm = TRUE) +
-  labs(subtitle = "Crosses mark the maximum allowed generations")
+  labs(subtitle = "Crosses mark the maximum allowed generations.")
 variance_plot
 paired_variance_plot
 runtime_plot
@@ -157,8 +157,31 @@ allocation_plot <- function(data, variable, y_label, population_size) {
     colour_scales() + plot_theme +
     labs(title = paste(y_label, "- population", population_size),
          x = "Stopping patience", y = y_label,
-         subtitle = "Feasible runs only; each stratum panel has its own vertical scale")
+         subtitle = "Feasible runs only; each stratum panel has its own vertical scale.")
 }
+
+# ------------------------------------------------------------
+# Gauteng: compare population sizes on the same vertical scale
+# ------------------------------------------------------------
+gauteng_plot_data <- filter(allocation_plot_data, stratum == "Gauteng")
+if (nrow(gauteng_plot_data) == 0) stop("No Gauteng allocations found in allocations.csv")
+
+gauteng_ch_plot <- boxplot_by_population(
+  gauteng_plot_data, "c_h", "Gauteng: Cluster allocation stability.",
+  "Sampled clusters (c_h)") +
+  labs(subtitle = "Feasible runs only; population panels share the same vertical scale")
+gauteng_kh_plot <- boxplot_by_population(
+  gauteng_plot_data, "k_h", "Gauteng: Within-cluster allocation stability.",
+  "Units per sampled cluster (k_h)") +
+  labs(subtitle = "Feasible runs only; population panels share the same vertical scale")
+gauteng_nh_plot <- boxplot_by_population(
+  gauteng_plot_data, "n_h", "Gauteng: Sample-size stability.",
+  "Sampled units (n_h = c_h * k_h)") +
+  labs(subtitle = "Feasible runs only; population panels share the same vertical scale")
+
+gauteng_ch_plot
+gauteng_kh_plot
+gauteng_nh_plot
 
 # ------------------------------------------------------------
 # Save PNG and PDF figures, without rerunning any GA experiments
@@ -171,7 +194,10 @@ save_plot <- function(plot, name, width = 12, height = 8) {
 }
 plots <- list(variance_boxplots = variance_plot, paired_variance_change = paired_variance_plot,
               runtime_boxplots = runtime_plot, generation_boxplots = generation_plot,
-              feasibility_rates = feasibility_plot, fallback_rates = fallback_plot)
+              feasibility_rates = feasibility_plot, fallback_rates = fallback_plot,
+              gauteng_ch_stability = gauteng_ch_plot,
+              gauteng_kh_stability = gauteng_kh_plot,
+              gauteng_nh_stability = gauteng_nh_plot)
 for (name in names(plots)) save_plot(plots[[name]], name)
 allocation_plots <- list()
 for (population_size in population_levels) {
