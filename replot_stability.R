@@ -62,10 +62,9 @@ write.csv(data.frame(starting_suggestion = suggestion_names, colour = unname(sug
  variance_seed_plot <- ggplot(run_summary, aes(x = seed, y = variance, colour = starting_suggestion, shape = feasible)) + 
     geom_line(aes(group = starting_suggestion), 
     linewidth = 0.5, alpha = 0.6) + geom_point(size = 2.8) + scale_shape_manual(values = c(`TRUE` = 16, 
-    `FALSE` = 4), labels = c(`TRUE` = "Feasible", `FALSE` = "Infeasible")) + labs(title = "Joint GA stability across random seeds", 
-    subtitle = paste0("Dashed line shows the mean variance: ", round(mean_variance, 6)), x = "Random seed", 
+    `FALSE` = 4), labels = c(`TRUE` = "Feasible", `FALSE` = "Infeasible")) + labs(title = "Joint GA stability across random seeds", x = "Random seed", 
     y = "Estimated variance", colour = "Starting suggestion", shape = "Solution") + theme_minimal(base_size = 12) + 
-    theme(legend.position = "bottom", panel.grid.minor = element_blank()) 
+    theme(legend.position = "bottom", panel.grid.minor = element_blank()) + guides(shape = "none")
 
  variance_distribution_plot <- ggplot(run_summary, aes(x = variance, fill = starting_suggestion)) + geom_histogram(bins = 12, 
     boundary = best_variance, alpha = 0.65, position = "identity") + geom_vline(xintercept = mean(run_summary$variance, 
@@ -80,7 +79,7 @@ write.csv(data.frame(starting_suggestion = suggestion_names, colour = unname(sug
     width = 0.08, height = 0, size = 2.4, alpha = 0.75) + scale_shape_manual(values = c(`TRUE` = 16, 
     `FALSE` = 4)) + labs(title = "Variation in the final objective value", subtitle = "Each box summarizes repeated runs from the same starting suggestion", 
     x = NULL, y = "Estimated variance", fill = "Starting suggestion", shape = "Feasible") + coord_flip() + 
-    theme_minimal(base_size = 12) + theme(legend.position = "bottom", panel.grid.minor = element_blank()) 
+    theme_minimal(base_size = 12) + theme(legend.position = "bottom", panel.grid.minor = element_blank()) + guides(shape = "none")
 
  suggestion_metric_comparison_plot <- ggplot(suggestion_metric_comparison, aes(x = reorder(starting_suggestion, 
     value, FUN = median), y = value, fill = starting_suggestion)) + geom_col(show.legend = FALSE) + facet_wrap(~metric, 
