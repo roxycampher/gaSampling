@@ -12,8 +12,7 @@ repair_ckh <- function(c_h,
                        cost_cluster = NULL,
                        cost_unit = NULL,
                        min_budget_use = 0.95, # hard coded for now
-                       budget_tol = 0.02,
-                       n_tol = 25) {
+                       budget_tol = 0.02) {
   L <- length(c_h)
   use_cost <- !is.null(max_cost)
   
@@ -65,7 +64,7 @@ repair_ckh <- function(c_h,
     }
     sample_size_gap <- achieved_total_n - total_n
     sample_shortfall <- max(0, total_n - achieved_total_n)
-    sample_size_ok <- abs(sample_size_gap) <= n_tol
+    sample_size_ok <- achieved_total_n >= total_n
     
     lower_cost_bound <- if (use_cost) max_cost * min_budget_use else NA_real_
     upper_cost_bound <- if (use_cost) max_cost * (1 + budget_tol) else NA_real_
@@ -106,7 +105,7 @@ repair_ckh <- function(c_h,
     unused_budget <- if (use_cost) abs(max_cost - result$total_cost) else 0
     
     c(
-      abs(result$sample_size_gap),
+      result$sample_shortfall,
       result$cost_over,
       result$budget_underuse,
       unused_budget,
@@ -172,7 +171,7 @@ repair_ckh <- function(c_h,
         if (length(possible) > 0L) {
           j <- possible[which.max(c_candidate[possible])]
           jump <- min(
-            if (diff > 0) floor(diff / c_candidate[j]) else Inf,
+            if (diff > 0) max(1L, floor(diff / c_candidate[j])) else Inf,
             upper_k[j] - k_candidate[j],
             budget_room[j],
             max(1L, as.integer(k_tolerance))
@@ -186,8 +185,8 @@ repair_ckh <- function(c_h,
           trial_k <- k_candidate
           trial_k[j] <- trial_k[j] + 1L
           
-          if (abs(sum(c_candidate * trial_k) - total_n) >=
-              abs(best_result$sample_size_gap)) {
+          if (max(0, total_n - sum(c_candidate * trial_k)) >=
+              best_result$sample_shortfall) {
             break
           }
           

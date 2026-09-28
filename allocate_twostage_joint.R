@@ -21,13 +21,13 @@ allocate_twostage_ga_joint <- function(strata,
   upper_c <- strata$C_h
   upper_k <- rep(total_n, L)
   
-  min_total_n <- sum(lower_c * lower_k)
   max_total_n <- sum(upper_c * upper_k)
   
-  if (total_n < min_total_n || total_n > max_total_n) {
+  if (total_n > max_total_n) {
     stop(
-      "total_n is outside the feasible range for the joint c_h and k_h bounds. ",
-      "Feasible range: ", min_total_n, " to ", max_total_n, "."
+      "The requested minimum sample size exceeds the maximum ",
+      "possible sample size under the allocation bounds: ",
+      max_total_n, "."
     )
   }
   

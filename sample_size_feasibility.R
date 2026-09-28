@@ -12,35 +12,36 @@ gcd_multiple <- function(x) {
   Reduce(gcd_two, x)
 }
 
-# Checks whether the requested n_total is feasible for the given c_h
-check_total_n_feasible <- function(total_n, c_h, lower = NULL, upper = NULL) {
+# Check whether the minimum sample size is attainable
+# for fixed c_h, subject to integer k_h bounds.
+check_total_n_feasible <- function(total_n, c_h,
+                                   lower = NULL, upper = NULL) {
   if (is.null(lower)) lower <- rep(1L, length(c_h))
   if (is.null(upper)) upper <- rep(Inf, length(c_h))
   
-  g <- gcd_multiple(c_h)
+  lower <- ceiling(lower)
+  upper <- floor(upper)
   
-  gcd_ok <- total_n %% g == 0 # check if n_total is divisible by gcd of c_h
-  range_ok <- total_n >= sum(c_h * lower) && total_n <= sum(c_h * upper) # check if n_total is within the possible range
+  bounds_ok <- all(lower <= upper)
+  min_n <- sum(c_h * lower)
+  max_n <- sum(c_h * upper)
   
-  feasible <- gcd_ok && range_ok # both checks must pass
+  range_ok <- total_n <= max_n
+  feasible <- bounds_ok && range_ok
   
   list(
     feasible = feasible,
-    gcd_ok = gcd_ok,
+    bounds_ok = bounds_ok,
     range_ok = range_ok,
-    gcd_c_h = g,
-    min_n = sum(c_h * lower), # smallest possible sample size under the given c_h
-    max_n = sum(c_h * upper), # largest possible sample size under the given c_h
+    min_n = min_n,
+    max_n = max_n,
     total_n = total_n,
-    message = if (feasible) {
-      "Exact total_n is feasible for this c_h allocation."
+    message = if (!bounds_ok) {
+      "The lower and upper bounds on k_h are inconsistent."
+    } else if (feasible) {
+      "The minimum sample size is attainable under these allocation bounds."
     } else {
-      paste0(
-        "Exact total_n may be impossible. total_n = ", total_n,
-        ", gcd(c_h) = ", g,
-        ", min possible n = ", sum(c_h * lower),
-        ", max possible n = ", sum(c_h * upper), "."
-      )
+      "The minimum sample size exceeds the maximum attainable sample size."
     }
   )
 }

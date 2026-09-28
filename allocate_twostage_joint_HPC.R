@@ -21,13 +21,13 @@ allocate_twostage_ga_joint <- function(strata,
   upper_c <- strata$C_h
   upper_k <- rep(total_n, L)
   
-  min_total_n <- sum(lower_c * lower_k)
   max_total_n <- sum(upper_c * upper_k)
   
-  if (total_n < min_total_n || total_n > max_total_n) {
+  if (total_n > max_total_n) {
     stop(
-      "total_n is outside the feasible range for the joint c_h and k_h bounds. ",
-      "Feasible range: ", min_total_n, " to ", max_total_n, "."
+      "The requested minimum sample size exceeds the maximum ",
+      "possible sample size under the allocation bounds: ",
+      max_total_n, "."
     )
   }
   
@@ -127,6 +127,8 @@ allocate_twostage_ga_joint <- function(strata,
     max_units = upper_k
   )
   
+  fallback_used <- FALSE
+  
   if (!repaired_check$feasible && !is.null(suggestion)) {
     suggestion_repaired <- repair_ckh(
       c_h = suggestion[1:L],
@@ -156,6 +158,7 @@ allocate_twostage_ga_joint <- function(strata,
     
     if (suggestion_check$feasible) {
       repaired <- suggestion_repaired
+      fallback_used <- TRUE
     }
   }
   
@@ -206,6 +209,7 @@ allocate_twostage_ga_joint <- function(strata,
   is_feasible <- constraint_check$feasible && repaired$repaired_exactly
   
   list(
+    fallback_used    = fallback_used,
     feasible         = is_feasible,
     variance         = total_variance,
     between_variance = total_between,    

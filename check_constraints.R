@@ -10,8 +10,7 @@ check_constraints <- function(c_h,
                               max_clusters = NULL,
                               max_units = NULL,
                               min_budget_use = 0.95,
-                              budget_tol = 0.02,
-                              n_tolerance = 25) { # can vary x units up or down
+                              budget_tol = 0.02) {
   
   # Compute stratum sample sizes
   n_h <- c_h * k_h
@@ -35,7 +34,7 @@ check_constraints <- function(c_h,
   # Check total sample size constraint
   if (!is.null(total_n)) {
     sample_size_gap <- sum(n_h) - total_n
-    sample_size_ok <- abs(sample_size_gap) <= n_tolerance
+    sample_size_ok <- sample_size_gap >= 0
   } else {
     sample_size_gap <- NA_integer_
     sample_size_ok <- TRUE

@@ -1,5 +1,4 @@
 # Recreate the existing joint-GA diagnostic plots without rerunning the GA.
-# Run from the edit project directory. Existing allocations in R are preserved.
 library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -7,9 +6,7 @@ library(ggplot2)
 input_dir <- 'joint_ga_stability_plots'
 output_dir <- 'joint_ga_stability_plots/reformatted'
 plot_dpi <- 200
-# If available, export the original per-seed allocations with:
-# write.csv(allocations, 'joint_ga_stability_plots/allocations.csv', row.names = FALSE)
-# allocation_summary.csv cannot reconstruct quartiles or individual observations.
+
 read_results <- function(name) {
   path <- file.path(input_dir, paste0(name, '.csv'))
   if (!file.exists(path)) stop('Missing results file: ', path)
@@ -62,11 +59,11 @@ write.csv(data.frame(starting_suggestion = suggestion_names, colour = unname(sug
  variance_seed_plot <- ggplot(run_summary, aes(x = seed, y = variance, colour = starting_suggestion, shape = feasible)) + 
     geom_line(aes(group = starting_suggestion), 
     linewidth = 0.5, alpha = 0.6) + geom_point(size = 2.8) + scale_shape_manual(values = c(`TRUE` = 16, 
-    `FALSE` = 4), labels = c(`TRUE` = "Feasible", `FALSE` = "Infeasible")) + labs(title = "Joint GA stability across random seeds", x = "Random seed", 
+    `FALSE` = 4), labels = c(`TRUE` = "Feasible", `FALSE` = "Infeasible")) + labs(title = "Joint GA stability across random seeds.", x = "Random seed", 
     y = "Estimated variance", colour = "Starting suggestion", shape = "Solution") + theme_minimal(base_size = 12) + 
     theme(legend.position = "bottom", panel.grid.minor = element_blank()) + guides(shape = "none")
 
- variance_distribution_plot <- ggplot(run_summary, aes(x = variance, fill = starting_suggestion)) + geom_histogram(bins = 12, 
+variance_distribution_plot <- ggplot(run_summary, aes(x = variance, fill = starting_suggestion)) + geom_histogram(bins = 12, 
     boundary = best_variance, alpha = 0.65, position = "identity") + geom_vline(xintercept = mean(run_summary$variance, 
     na.rm = TRUE), linetype = "dashed", linewidth = 0.8) + geom_vline(xintercept = best_variance, linetype = "dotted", 
     linewidth = 0.8) + labs(title = "Distribution of final GA variances", subtitle = paste0("Mean = ", 
@@ -74,23 +71,22 @@ write.csv(data.frame(starting_suggestion = suggestion_names, colour = unname(sug
         6)), x = "Final variance", y = "Number of runs", fill = "Starting suggestion") + theme_minimal(base_size = 12) + 
     theme(panel.grid.minor = element_blank()) 
 
- variance_boxplot <- ggplot(run_summary, aes(x = reorder(starting_suggestion, variance, FUN = median), 
+variance_boxplot <- ggplot(run_summary, aes(x = reorder(starting_suggestion, variance, FUN = median), 
     y = variance, fill = starting_suggestion)) + geom_boxplot(width = 0.3, outlier.shape = NA) + geom_jitter(aes(shape = feasible), 
     width = 0.08, height = 0, size = 2.4, alpha = 0.75) + scale_shape_manual(values = c(`TRUE` = 16, 
-    `FALSE` = 4)) + labs(title = "Variation in the final objective value", subtitle = "Each box summarizes repeated runs from the same starting suggestion", 
+    `FALSE` = 4)) + labs(title = "Variation in the final objective value.", 
     x = NULL, y = "Estimated variance", fill = "Starting suggestion", shape = "Feasible") + coord_flip() + 
     theme_minimal(base_size = 12) + theme(legend.position = "bottom", panel.grid.minor = element_blank()) + guides(shape = "none")
 
- suggestion_metric_comparison_plot <- ggplot(suggestion_metric_comparison, aes(x = reorder(starting_suggestion, 
+suggestion_metric_comparison_plot <- ggplot(suggestion_metric_comparison, aes(x = reorder(starting_suggestion, 
     value, FUN = median), y = value, fill = starting_suggestion)) + geom_col(show.legend = FALSE) + facet_wrap(~metric, 
-    scales = "free_x", ncol = 2) + coord_flip() + labs(title = "Joint GA diagnostic comparison by starting suggestion", 
-    subtitle = "Each metric summarizes repeated runs from the same starting suggestion", x = NULL, y = "Metric value") + 
+    scales = "free_x", ncol = 2) + coord_flip() + labs(title = "Joint GA diagnostic comparison by starting suggestion.", 
+    subtitle = "Each metric summarizes repeated runs from the same starting suggestion.", x = NULL, y = "Metric value") + 
     theme_minimal(base_size = 12) + theme(strip.text = element_text(face = "bold"), panel.grid.minor = element_blank()) 
 
- ga_vs_basic_variance_plot <- ggplot(ga_vs_basic_variance_comparison, aes(x = reorder(method, mean_variance), 
+ga_vs_basic_variance_plot <- ggplot(ga_vs_basic_variance_comparison, aes(x = reorder(method, mean_variance), 
     y = mean_variance, fill = comparison_type)) + geom_col() + geom_errorbar(aes(ymin = minimum_variance, 
-    ymax = maximum_variance), width = 0.2) + coord_flip() + labs(title = "GA results compared with basic allocation benchmarks", 
-    subtitle = "Bars show mean variance; error bars show min and max across GA runs", x = NULL, y = "Estimated variance", 
+    ymax = maximum_variance), width = 0.2) + coord_flip() + labs(title = "GA results compared with basic allocation benchmarks.", x = NULL, y = "Estimated variance", 
     fill = "Allocation type") + theme_minimal(base_size = 12) + theme(panel.grid.minor = element_blank()) 
 
  basic_benchmark_variance_histogram <- ggplot(basic_benchmark_variances, aes(x = reorder(benchmark, variance), 
@@ -98,29 +94,7 @@ write.csv(data.frame(starting_suggestion = suggestion_names, colour = unname(sug
     subtitle = "Closed-form non-GA allocations used as comparison benchmarks", x = NULL, y = "Estimated variance") + 
     theme_minimal(base_size = 12) + theme(panel.grid.minor = element_blank()) 
 
- if (have_allocations) {
-c_h_stability_plot <- ggplot(allocations, aes(x = reorder(stratum, c_h, FUN = median), y = c_h, fill = starting_suggestion)) + 
-    geom_boxplot(outlier.shape = NA) + geom_jitter(width = 0.15, alpha = 0.45, size = 1.5) + labs(title = "Stability of sampled-cluster allocations", 
-    subtitle = "Each point is the allocation from one random seed", x = "Stratum", y = expression(c[h]), 
-    fill = "Starting suggestion") + facet_wrap(~starting_suggestion) + coord_flip() + theme_minimal(base_size = 12) + 
-    theme(panel.grid.minor = element_blank())
-} 
 
- if (have_allocations) {
-k_h_stability_plot <- ggplot(allocations, aes(x = reorder(stratum, k_h, FUN = median), y = k_h, fill = starting_suggestion)) + 
-    geom_boxplot(outlier.shape = NA) + geom_jitter(width = 0.15, alpha = 0.45, size = 1.5) + labs(title = "Stability of within-cluster sample sizes", 
-    subtitle = "Each point is the allocation from one random seed", x = "Stratum", y = expression(k[h]), 
-    fill = "Starting suggestion") + facet_wrap(~starting_suggestion) + coord_flip() + theme_minimal(base_size = 12) + 
-    theme(panel.grid.minor = element_blank())
-} 
-
- if (have_allocations) {
-n_h_stability_plot <- ggplot(allocations, aes(x = reorder(stratum, n_h, FUN = median), y = n_h, fill = starting_suggestion)) + 
-    geom_boxplot(outlier.shape = NA) + geom_jitter(width = 0.15, alpha = 0.45, size = 1.5) + labs(title = "Stability of total stratum sample sizes", 
-    subtitle = expression(paste("Each point is one GA run;  ", n[h] == c[h] * k[h])), x = "Stratum", 
-    y = expression(n[h]), fill = "Starting suggestion") + facet_wrap(~starting_suggestion) + coord_flip() + 
-    theme_minimal(base_size = 12) + theme(panel.grid.minor = element_blank())
-} 
 
  if (have_allocations) {
 allocation_long <- dplyr::mutate(tidyr::pivot_longer(dplyr::select(allocations, starting_suggestion, 
@@ -138,15 +112,15 @@ combined_allocation_plot <- ggplot(allocation_long, aes(x = stratum, y = value, 
     panel.grid.minor = element_blank())
 } 
 
- repair_diagnostics <- dplyr::mutate(tidyr::pivot_longer(dplyr::select(run_summary, starting_suggestion, 
+repair_diagnostics <- dplyr::mutate(tidyr::pivot_longer(dplyr::select(run_summary, starting_suggestion, 
     seed, sample_size_gap, repair_iterations), cols = c(sample_size_gap, repair_iterations), names_to = "diagnostic", 
     values_to = "value"), diagnostic = factor(diagnostic, levels = c("sample_size_gap", "repair_iterations"), 
     labels = c("Final sample-size gap", "Repair iterations"))) 
 
- repair_diagnostic_plot <- ggplot(repair_diagnostics, aes(x = seed, y = value, colour = starting_suggestion)) + 
+repair_diagnostic_plot <- ggplot(repair_diagnostics, aes(x = seed, y = value, colour = starting_suggestion)) + 
     geom_line(aes(group = starting_suggestion), alpha = 0.6) + geom_point(size = 2) + facet_wrap(~diagnostic, 
-    scales = "free_y", ncol = 1) + labs(title = "Repair behaviour across random seeds", x = "Random seed", 
-    y = "Diagnostic value", colour = "Starting suggestion") + theme_minimal(base_size = 12) + theme(strip.text = element_text(face = "bold"), 
+    scales = "free_y", ncol = 1) + labs(title = "Repair behaviour across random seeds.", x = "Random seed", 
+    y = NULL, colour = "Starting suggestion") + theme_minimal(base_size = 12) + theme(strip.text = element_text(face = "bold"), 
     panel.grid.minor = element_blank()) 
 
 # ------------------------------------------------------------
