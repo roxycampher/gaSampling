@@ -1,0 +1,73 @@
+"phase","config_id","starting_suggestion","stratum","c_h_median","c_h_iqr","k_h_median","k_h_iqr","n_h_median","n_h_iqr"
+"screening","p100_i500_r50","3. Neyman proportional","Eastern Cape",34,0,13,0,442,0
+"screening","p100_i500_r50","3. Neyman proportional","Free State",20,0,13,0,260,0
+"screening","p100_i500_r50","3. Neyman proportional","Gauteng",84,0,17,0,1428,0
+"screening","p100_i500_r50","3. Neyman proportional","KwaZulu-Natal",65,0,13,0,845,0
+"screening","p100_i500_r50","3. Neyman proportional","Limpopo",42,0,13,0,546,0
+"screening","p100_i500_r50","3. Neyman proportional","Mpumalanga",31,0,13,0,403,0
+"screening","p100_i500_r50","3. Neyman proportional","North West",28,0,13,0,364,0
+"screening","p100_i500_r50","3. Neyman proportional","Northern Cape",10,0,14,0,140,0
+"screening","p100_i500_r50","3. Neyman proportional","Western Cape",44,0,13,0,572,0
+"screening","p200_i1000_r50","3. Neyman proportional","Eastern Cape",34,0,13,0,442,0
+"screening","p200_i1000_r50","3. Neyman proportional","Free State",20,0,13,0,260,0
+"screening","p200_i1000_r50","3. Neyman proportional","Gauteng",84,0,17,0.5,1428,34.5
+"screening","p200_i1000_r50","3. Neyman proportional","KwaZulu-Natal",65,0,13,0,845,0
+"screening","p200_i1000_r50","3. Neyman proportional","Limpopo",42,0,13,0,546,0
+"screening","p200_i1000_r50","3. Neyman proportional","Mpumalanga",31,0,13,0,403,0
+"screening","p200_i1000_r50","3. Neyman proportional","North West",28,0,13,0,364,0
+"screening","p200_i1000_r50","3. Neyman proportional","Northern Cape",10,0,14,0,140,0
+"screening","p200_i1000_r50","3. Neyman proportional","Western Cape",44,0,13,0,572,4
+"screening","p200_i250_r50","3. Neyman proportional","Eastern Cape",34,0,13,0,442,0
+"screening","p200_i250_r50","3. Neyman proportional","Free State",20,0,13,0,260,0
+"screening","p200_i250_r50","3. Neyman proportional","Gauteng",84,0,17,0.5,1428,34.5
+"screening","p200_i250_r50","3. Neyman proportional","KwaZulu-Natal",65,0,13,0,845,0
+"screening","p200_i250_r50","3. Neyman proportional","Limpopo",42,0,13,0,546,0
+"screening","p200_i250_r50","3. Neyman proportional","Mpumalanga",31,0,13,0,403,0
+"screening","p200_i250_r50","3. Neyman proportional","North West",28,0,13,0,364,0
+"screening","p200_i250_r50","3. Neyman proportional","Northern Cape",10,0,14,0,140,0
+"screening","p200_i250_r50","3. Neyman proportional","Western Cape",44,0,13,0,572,4
+"screening","p200_i500_r100","3. Neyman proportional","Eastern Cape",34,0,13,0,442,0
+"screening","p200_i500_r100","3. Neyman proportional","Free State",20,0,13,0,260,8.5
+"screening","p200_i500_r100","3. Neyman proportional","Gauteng",84,0,17,2,1428,168
+"screening","p200_i500_r100","3. Neyman proportional","KwaZulu-Natal",65,0,13,0,845,0
+"screening","p200_i500_r100","3. Neyman proportional","Limpopo",42,0,13,0,546,6.5
+"screening","p200_i500_r100","3. Neyman proportional","Mpumalanga",31,0,13,0,403,0
+"screening","p200_i500_r100","3. Neyman proportional","North West",28,0,13,0,364,0
+"screening","p200_i500_r100","3. Neyman proportional","Northern Cape",10,0,14,0,140,0
+"screening","p200_i500_r100","3. Neyman proportional","Western Cape",44,0.5,13,0,572,23
+"screening","p200_i500_r25","3. Neyman proportional","Eastern Cape",34,0,13,0,442,0
+"screening","p200_i500_r25","3. Neyman proportional","Free State",20,0,13,0,260,0
+"screening","p200_i500_r25","3. Neyman proportional","Gauteng",84,0,17,0,1428,0
+"screening","p200_i500_r25","3. Neyman proportional","KwaZulu-Natal",65,0,13,0,845,0
+"screening","p200_i500_r25","3. Neyman proportional","Limpopo",42,0,13,0,546,0
+"screening","p200_i500_r25","3. Neyman proportional","Mpumalanga",31,0,13,0,403,0
+"screening","p200_i500_r25","3. Neyman proportional","North West",28,0,13,0,364,0
+"screening","p200_i500_r25","3. Neyman proportional","Northern Cape",10,0,14,0,140,0
+"screening","p200_i500_r25","3. Neyman proportional","Western Cape",44,0,13,0,572,0
+"screening","p200_i500_r50","3. Neyman proportional","Eastern Cape",34,0,13,0,442,0
+"screening","p200_i500_r50","3. Neyman proportional","Free State",20,0,13,0,260,0
+"screening","p200_i500_r50","3. Neyman proportional","Gauteng",84,0,17,0.5,1428,34.5
+"screening","p200_i500_r50","3. Neyman proportional","KwaZulu-Natal",65,0,13,0,845,0
+"screening","p200_i500_r50","3. Neyman proportional","Limpopo",42,0,13,0,546,0
+"screening","p200_i500_r50","3. Neyman proportional","Mpumalanga",31,0,13,0,403,0
+"screening","p200_i500_r50","3. Neyman proportional","North West",28,0,13,0,364,0
+"screening","p200_i500_r50","3. Neyman proportional","Northern Cape",10,0,14,0,140,0
+"screening","p200_i500_r50","3. Neyman proportional","Western Cape",44,0,13,0,572,4
+"screening","p400_i500_r50","3. Neyman proportional","Eastern Cape",34,0,13,0,442,0
+"screening","p400_i500_r50","3. Neyman proportional","Free State",20,0,13,0,260,0
+"screening","p400_i500_r50","3. Neyman proportional","Gauteng",84,0,17,0,1428,0
+"screening","p400_i500_r50","3. Neyman proportional","KwaZulu-Natal",65,0,13,0,845,0
+"screening","p400_i500_r50","3. Neyman proportional","Limpopo",42,0,13,0,546,0
+"screening","p400_i500_r50","3. Neyman proportional","Mpumalanga",31,0,13,0,403,0
+"screening","p400_i500_r50","3. Neyman proportional","North West",28,0,13,0,364,0
+"screening","p400_i500_r50","3. Neyman proportional","Northern Cape",10,0,14,0,140,0
+"screening","p400_i500_r50","3. Neyman proportional","Western Cape",44,0,13,0,572,0
+"screening","p50_i500_r50","3. Neyman proportional","Eastern Cape",34,0,13,0,442,0
+"screening","p50_i500_r50","3. Neyman proportional","Free State",20,0,13,0,260,0
+"screening","p50_i500_r50","3. Neyman proportional","Gauteng",84,0,17,2,1428,168
+"screening","p50_i500_r50","3. Neyman proportional","KwaZulu-Natal",65,0,13,0,845,0
+"screening","p50_i500_r50","3. Neyman proportional","Limpopo",42,0,13,0,546,0
+"screening","p50_i500_r50","3. Neyman proportional","Mpumalanga",31,0,13,0,403,3.25
+"screening","p50_i500_r50","3. Neyman proportional","North West",28,0,13,0,364,0
+"screening","p50_i500_r50","3. Neyman proportional","Northern Cape",10,0,14,0,140,0
+"screening","p50_i500_r50","3. Neyman proportional","Western Cape",44,0,13,0,572,6.5

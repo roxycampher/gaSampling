@@ -198,61 +198,83 @@ ga_runs <- parallel::mclapply(
   seq_len(nrow(grid)),
   function(i) {
     
-    settings <- grid[i, ]
-    checkpoint <- file.path(checkpoint_dir, paste0(settings$phase, "_", settings$config_id,
-                                                   "_start", match(settings$starting_suggestion, names(starts)),
-                                                   "_seed", settings$seed, ".rds"))
-    
-    if (file.exists(checkpoint)) return(readRDS(checkpoint))
-    
-    cat(sprintf("[%s] start run %d/%d: %s, seed %s, %s\n",
-                format(Sys.time(), "%H:%M:%S"), i, nrow(grid), settings$config_id,
-                settings$seed, settings$starting_suggestion),
-        file = progress_log, append = TRUE)
-    
-    start <- starts[[settings$starting_suggestion]]
-    start_variance <- variance_twostage(start$repaired_c_h, start$repaired_k_h,
-                                        strata$W_h, strata$sigma2_bh, strata$sigma2_wh)
-    
-    begin <- proc.time()[["elapsed"]]
-    
-    result <- tryCatch(allocate_twostage_ga_joint(
-      strata, total_n, max_cost, popSize = settings$popSize,
-      maxiter = settings$maxiter, run = settings$run, seed = settings$seed,
-      suggestion = c(start$repaired_c_h, start$repaired_k_h), monitor = FALSE),
-      error = function(e) e)
-    
-    elapsed <- proc.time()[["elapsed"]] - begin
-    
-    if (inherits(result, "error")) {
-      return(list(summary = cbind(settings, feasible = FALSE, elapsed_seconds = elapsed,
-                                  error = conditionMessage(result)), allocation = NULL))}
-    
-    summary <- cbind(settings, feasible = result$feasible, variance = result$variance,
-                     start_variance = start_variance,
-                     improvement_pct = 100 * (start_variance - result$variance) / start_variance,
-                     elapsed_seconds = elapsed, generations = result$ga_object@iter,
-                     fallback_used = result$fallback_used,
-                     total_n = result$total_n, total_cost = result$total_cost,
-                     sample_size_gap = result$total_n - total_n,
-                     repair_iterations = result$repair$iterations, error = NA_character_)
-    
-    allocation <- cbind(settings[rep(1, nrow(result$allocation)), ], result$allocation,
-                        feasible = result$feasible)
-    
-    saved <- list(summary = summary, allocation = allocation)
-    
-    # Interrupted writes leave only a temporary file, which is never reloaded.
-    temporary <- paste0(checkpoint, ".tmp")
-    saveRDS(saved, temporary)
-    if (!file.rename(temporary, checkpoint)) stop("Cannot save checkpoint: ", checkpoint)
-    
-    cat(sprintf("[%s] done run %d/%d: %s, seed %s, %s, feasible=%s, elapsed=%.1fs\n",
-                format(Sys.time(), "%H:%M:%S"), i, nrow(grid), settings$config_id,
-                settings$seed, settings$starting_suggestion,
-                isTRUE(saved$summary$feasible[1]), elapsed),
-        file = progress_log, append = TRUE)
-    saved
+    tryCatch({
+      
+      settings <- grid[i, ]
+      checkpoint <- file.path(checkpoint_dir, paste0(settings$phase, "_", settings$config_id,
+                                                     "_start", match(settings$starting_suggestion, names(starts)),
+                                                     "_seed", settings$seed, ".rds"))
+      
+      if (file.exists(checkpoint)) return(readRDS(checkpoint))
+      
+      cat(sprintf("[%s] start run %d/%d: %s, seed %s, %s\n",
+                  format(Sys.time(), "%H:%M:%S"), i, nrow(grid), settings$config_id,
+                  settings$seed, settings$starting_suggestion),
+          file = progress_log, append = TRUE)
+      
+      start <- starts[[settings$starting_suggestion]]
+      start_variance <- variance_twostage(start$repaired_c_h, start$repaired_k_h,
+                                          strata$W_h, strata$sigma2_bh, strata$sigma2_wh)
+      
+      begin <- proc.time()[["elapsed"]]
+      
+      result <- tryCatch(allocate_twostage_ga_joint(
+        strata, total_n, max_cost, popSize = settings$popSize,
+        maxiter = settings$maxiter, run = settings$run, seed = settings$seed,
+        suggestion = c(start$repaired_c_h, start$repaired_k_h), monitor = FALSE),
+        error = function(e) e)
+      
+      elapsed <- proc.time()[["elapsed"]] - begin
+      
+      if (inherits(result, "error")) {
+        return(list(summary = cbind(settings, feasible = FALSE, elapsed_seconds = elapsed,
+                                    error = conditionMessage(result)), allocation = NULL))}
+      
+      # Some result fields (e.g. repair$iterations, fallback_used) can come back
+      # length-0 rather than a scalar on trivial or edge-case runs, which makes
+      # cbind()/data.frame() error on a row-count mismatch. Coerce to NA instead.
+      scalar_or_na <- function(x) if (length(x) == 0) NA else x[1]
+      variance_val <- scalar_or_na(result$variance)
+      total_n_val <- scalar_or_na(result$total_n)
+      
+      summary <- cbind(settings, feasible = scalar_or_na(result$feasible),
+                       variance = variance_val,
+                       start_variance = start_variance,
+                       improvement_pct = if (is.na(variance_val)) NA_real_
+                       else 100 * (start_variance - variance_val) / start_variance,
+                       elapsed_seconds = elapsed, generations = scalar_or_na(result$ga_object@iter),
+                       fallback_used = scalar_or_na(result$fallback_used),
+                       total_n = total_n_val, total_cost = scalar_or_na(result$total_cost),
+                       sample_size_gap = if (is.na(total_n_val)) NA_real_ else total_n_val - total_n,
+                       repair_iterations = scalar_or_na(result$repair$iterations), error = NA_character_)
+      
+      allocation <- cbind(settings[rep(1, nrow(result$allocation)), ], result$allocation,
+                          feasible = scalar_or_na(result$feasible))
+      
+      saved <- list(summary = summary, allocation = allocation)
+      
+      # Interrupted writes leave only a temporary file, which is never reloaded.
+      temporary <- paste0(checkpoint, ".tmp")
+      saveRDS(saved, temporary)
+      if (!file.rename(temporary, checkpoint)) stop("Cannot save checkpoint: ", checkpoint)
+      
+      cat(sprintf("[%s] done run %d/%d: %s, seed %s, %s, feasible=%s, elapsed=%.1fs\n",
+                  format(Sys.time(), "%H:%M:%S"), i, nrow(grid), settings$config_id,
+                  settings$seed, settings$starting_suggestion,
+                  isTRUE(saved$summary$feasible[1]), elapsed),
+          file = progress_log, append = TRUE)
+      saved
+      
+    }, error = function(e) {
+      # Catches failures anywhere in the run (not just inside the GA call
+      # itself), so a genuine crash never surfaces as an opaque mclapply
+      # try-error with no message.
+      cat(sprintf("[%s] CRASHED run %d/%d: %s\n",
+                  format(Sys.time(), "%H:%M:%S"), i, nrow(grid), conditionMessage(e)),
+          file = progress_log, append = TRUE)
+      list(summary = cbind(grid[i, ], feasible = FALSE, elapsed_seconds = NA_real_,
+                           error = conditionMessage(e)), allocation = NULL)
+    })
   },                          # Ends function(i)
   mc.cores = number_of_workers,
   mc.preschedule = FALSE,
