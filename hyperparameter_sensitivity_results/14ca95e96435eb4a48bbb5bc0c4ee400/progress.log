@@ -1,0 +1,320 @@
+[12:51:22] start run 1/160: p200_i500_r50, seed 1, 3. Neyman proportional
+[12:51:22] start run 2/160: p50_i500_r50, seed 1, 3. Neyman proportional
+[12:51:22] start run 3/160: p100_i500_r50, seed 1, 3. Neyman proportional
+[12:51:22] start run 4/160: p400_i500_r50, seed 1, 3. Neyman proportional
+[12:51:22] start run 5/160: p200_i250_r50, seed 1, 3. Neyman proportional
+[12:51:22] start run 6/160: p200_i1000_r50, seed 1, 3. Neyman proportional
+[12:51:22] start run 7/160: p200_i500_r25, seed 1, 3. Neyman proportional
+[12:51:22] start run 8/160: p200_i500_r100, seed 1, 3. Neyman proportional
+[12:51:22] start run 9/160: p200_i500_r50, seed 2, 3. Neyman proportional
+[12:51:22] start run 10/160: p50_i500_r50, seed 2, 3. Neyman proportional
+[12:51:22] start run 11/160: p100_i500_r50, seed 2, 3. Neyman proportional
+[12:51:22] start run 12/160: p400_i500_r50, seed 2, 3. Neyman proportional
+[12:51:22] start run 13/160: p200_i250_r50, seed 2, 3. Neyman proportional
+[12:51:22] start run 14/160: p200_i1000_r50, seed 2, 3. Neyman proportional
+[12:51:22] start run 15/160: p200_i500_r25, seed 2, 3. Neyman proportional
+[12:51:22] start run 16/160: p200_i500_r100, seed 2, 3. Neyman proportional
+[12:51:22] start run 17/160: p200_i500_r50, seed 3, 3. Neyman proportional
+[12:51:22] start run 18/160: p50_i500_r50, seed 3, 3. Neyman proportional
+[12:51:22] start run 19/160: p100_i500_r50, seed 3, 3. Neyman proportional
+[12:51:22] start run 20/160: p400_i500_r50, seed 3, 3. Neyman proportional
+[12:51:22] start run 21/160: p200_i250_r50, seed 3, 3. Neyman proportional
+[12:51:22] start run 22/160: p200_i1000_r50, seed 3, 3. Neyman proportional
+[12:51:22] start run 23/160: p200_i500_r25, seed 3, 3. Neyman proportional
+[12:51:22] start run 24/160: p200_i500_r100, seed 3, 3. Neyman proportional
+[12:51:22] start run 25/160: p200_i500_r50, seed 4, 3. Neyman proportional
+[12:51:22] start run 26/160: p50_i500_r50, seed 4, 3. Neyman proportional
+[12:51:22] start run 27/160: p100_i500_r50, seed 4, 3. Neyman proportional
+[12:51:22] start run 28/160: p400_i500_r50, seed 4, 3. Neyman proportional
+[12:51:22] start run 29/160: p200_i250_r50, seed 4, 3. Neyman proportional
+[12:51:22] start run 30/160: p200_i1000_r50, seed 4, 3. Neyman proportional
+[12:51:22] start run 31/160: p200_i500_r25, seed 4, 3. Neyman proportional
+[12:51:22] start run 32/160: p200_i500_r100, seed 4, 3. Neyman proportional
+[12:51:22] start run 33/160: p200_i500_r50, seed 5, 3. Neyman proportional
+[12:51:22] start run 34/160: p50_i500_r50, seed 5, 3. Neyman proportional
+[12:51:22] start run 35/160: p100_i500_r50, seed 5, 3. Neyman proportional
+[12:51:22] start run 36/160: p400_i500_r50, seed 5, 3. Neyman proportional
+[12:51:22] start run 37/160: p200_i250_r50, seed 5, 3. Neyman proportional
+[12:51:22] start run 38/160: p200_i1000_r50, seed 5, 3. Neyman proportional
+[12:51:22] start run 39/160: p200_i500_r25, seed 5, 3. Neyman proportional
+[12:51:22] start run 40/160: p200_i500_r100, seed 5, 3. Neyman proportional
+[13:01:02] done run 2/160: p50_i500_r50, seed 1, 3. Neyman proportional, feasible=TRUE, elapsed=579.8s
+[13:01:02] start run 41/160: p200_i500_r50, seed 6, 3. Neyman proportional
+[13:01:07] done run 18/160: p50_i500_r50, seed 3, 3. Neyman proportional, feasible=TRUE, elapsed=585.2s
+[13:01:07] start run 42/160: p50_i500_r50, seed 6, 3. Neyman proportional
+[13:04:15] done run 10/160: p50_i500_r50, seed 2, 3. Neyman proportional, feasible=TRUE, elapsed=773.2s
+[13:04:15] start run 43/160: p100_i500_r50, seed 6, 3. Neyman proportional
+[13:05:42] done run 26/160: p50_i500_r50, seed 4, 3. Neyman proportional, feasible=TRUE, elapsed=859.6s
+[13:05:42] start run 44/160: p400_i500_r50, seed 6, 3. Neyman proportional
+[13:16:06] done run 34/160: p50_i500_r50, seed 5, 3. Neyman proportional, feasible=TRUE, elapsed=1484.4s
+[13:16:07] start run 45/160: p200_i250_r50, seed 6, 3. Neyman proportional
+[13:20:43] done run 3/160: p100_i500_r50, seed 1, 3. Neyman proportional, feasible=TRUE, elapsed=1760.7s
+[13:20:43] start run 46/160: p200_i1000_r50, seed 6, 3. Neyman proportional
+[13:21:40] done run 42/160: p50_i500_r50, seed 6, 3. Neyman proportional, feasible=TRUE, elapsed=1233.2s
+[13:21:40] start run 47/160: p200_i500_r25, seed 6, 3. Neyman proportional
+[13:25:53] done run 11/160: p100_i500_r50, seed 2, 3. Neyman proportional, feasible=TRUE, elapsed=2070.9s
+[13:25:53] start run 48/160: p200_i500_r100, seed 6, 3. Neyman proportional
+[13:35:26] done run 19/160: p100_i500_r50, seed 3, 3. Neyman proportional, feasible=TRUE, elapsed=2643.6s
+[13:35:26] start run 49/160: p200_i500_r50, seed 7, 3. Neyman proportional
+[13:36:09] done run 27/160: p100_i500_r50, seed 4, 3. Neyman proportional, feasible=TRUE, elapsed=2687.3s
+[13:36:09] start run 50/160: p50_i500_r50, seed 7, 3. Neyman proportional
+[13:36:18] done run 15/160: p200_i500_r25, seed 2, 3. Neyman proportional, feasible=TRUE, elapsed=2696.2s
+[13:36:18] start run 51/160: p100_i500_r50, seed 7, 3. Neyman proportional
+[13:36:46] done run 31/160: p200_i500_r25, seed 4, 3. Neyman proportional, feasible=TRUE, elapsed=2724.3s
+[13:36:46] start run 52/160: p400_i500_r50, seed 7, 3. Neyman proportional
+[13:36:50] done run 7/160: p200_i500_r25, seed 1, 3. Neyman proportional, feasible=TRUE, elapsed=2727.7s
+[13:36:50] start run 53/160: p200_i250_r50, seed 7, 3. Neyman proportional
+[13:41:37] done run 39/160: p200_i500_r25, seed 5, 3. Neyman proportional, feasible=TRUE, elapsed=3014.4s
+[13:41:37] start run 54/160: p200_i1000_r50, seed 7, 3. Neyman proportional
+[13:42:53] done run 35/160: p100_i500_r50, seed 5, 3. Neyman proportional, feasible=TRUE, elapsed=3091.1s
+[13:42:53] start run 55/160: p200_i500_r25, seed 7, 3. Neyman proportional
+[13:43:13] done run 23/160: p200_i500_r25, seed 3, 3. Neyman proportional, feasible=TRUE, elapsed=3110.5s
+[13:43:13] start run 56/160: p200_i500_r100, seed 7, 3. Neyman proportional
+[13:49:25] done run 50/160: p50_i500_r50, seed 7, 3. Neyman proportional, feasible=TRUE, elapsed=795.8s
+[13:49:25] start run 57/160: p200_i500_r50, seed 8, 3. Neyman proportional
+[13:54:15] done run 9/160: p200_i500_r50, seed 2, 3. Neyman proportional, feasible=TRUE, elapsed=3773.3s
+[13:54:15] start run 58/160: p50_i500_r50, seed 8, 3. Neyman proportional
+[13:54:16] done run 13/160: p200_i250_r50, seed 2, 3. Neyman proportional, feasible=TRUE, elapsed=3774.4s
+[13:54:16] start run 59/160: p100_i500_r50, seed 8, 3. Neyman proportional
+[13:54:20] done run 14/160: p200_i1000_r50, seed 2, 3. Neyman proportional, feasible=TRUE, elapsed=3778.0s
+[13:54:20] start run 60/160: p400_i500_r50, seed 8, 3. Neyman proportional
+[13:55:14] done run 43/160: p100_i500_r50, seed 6, 3. Neyman proportional, feasible=TRUE, elapsed=3058.9s
+[13:55:14] start run 61/160: p200_i250_r50, seed 8, 3. Neyman proportional
+[13:59:14] done run 16/160: p200_i500_r100, seed 2, 3. Neyman proportional, feasible=TRUE, elapsed=4072.5s
+[13:59:14] start run 62/160: p200_i1000_r50, seed 8, 3. Neyman proportional
+[14:01:27] done run 58/160: p50_i500_r50, seed 8, 3. Neyman proportional, feasible=TRUE, elapsed=431.4s
+[14:01:27] start run 63/160: p200_i500_r25, seed 8, 3. Neyman proportional
+[14:05:58] done run 40/160: p200_i500_r100, seed 5, 3. Neyman proportional, feasible=TRUE, elapsed=4475.8s
+[14:05:58] start run 64/160: p200_i500_r100, seed 8, 3. Neyman proportional
+[14:08:37] done run 51/160: p100_i500_r50, seed 7, 3. Neyman proportional, feasible=TRUE, elapsed=1939.2s
+[14:08:37] start run 65/160: p200_i500_r50, seed 9, 3. Neyman proportional
+[14:12:39] done run 38/160: p200_i1000_r50, seed 5, 3. Neyman proportional, feasible=TRUE, elapsed=4876.5s
+[14:12:39] start run 66/160: p50_i500_r50, seed 9, 3. Neyman proportional
+[14:12:45] done run 33/160: p200_i500_r50, seed 5, 3. Neyman proportional, feasible=TRUE, elapsed=4882.5s
+[14:12:45] start run 67/160: p100_i500_r50, seed 9, 3. Neyman proportional
+[14:13:09] done run 37/160: p200_i250_r50, seed 5, 3. Neyman proportional, feasible=TRUE, elapsed=4907.1s
+[14:13:09] start run 68/160: p400_i500_r50, seed 9, 3. Neyman proportional
+[14:17:37] done run 5/160: p200_i250_r50, seed 1, 3. Neyman proportional, feasible=TRUE, elapsed=5174.8s
+[14:17:37] start run 69/160: p200_i250_r50, seed 9, 3. Neyman proportional
+[14:20:46] done run 29/160: p200_i250_r50, seed 4, 3. Neyman proportional, feasible=TRUE, elapsed=5364.3s
+[14:20:46] start run 70/160: p200_i1000_r50, seed 9, 3. Neyman proportional
+[14:21:12] done run 21/160: p200_i250_r50, seed 3, 3. Neyman proportional, feasible=TRUE, elapsed=5390.4s
+[14:21:12] start run 71/160: p200_i500_r25, seed 9, 3. Neyman proportional
+[14:21:18] done run 17/160: p200_i500_r50, seed 3, 3. Neyman proportional, feasible=TRUE, elapsed=5395.9s
+[14:21:18] start run 72/160: p200_i500_r100, seed 9, 3. Neyman proportional
+[14:22:12] done run 41/160: p200_i500_r50, seed 6, 3. Neyman proportional, feasible=TRUE, elapsed=4870.3s
+[14:22:12] start run 73/160: p200_i500_r50, seed 10, 3. Neyman proportional
+[14:24:43] done run 66/160: p50_i500_r50, seed 9, 3. Neyman proportional, feasible=TRUE, elapsed=723.9s
+[14:24:43] start run 74/160: p50_i500_r50, seed 10, 3. Neyman proportional
+[14:29:49] done run 1/160: p200_i500_r50, seed 1, 3. Neyman proportional, feasible=TRUE, elapsed=5907.2s
+[14:29:49] start run 75/160: p100_i500_r50, seed 10, 3. Neyman proportional
+[14:30:03] done run 6/160: p200_i1000_r50, seed 1, 3. Neyman proportional, feasible=TRUE, elapsed=5920.6s
+[14:30:03] start run 76/160: p400_i500_r50, seed 10, 3. Neyman proportional
+[14:31:35] done run 46/160: p200_i1000_r50, seed 6, 3. Neyman proportional, feasible=TRUE, elapsed=4252.2s
+[14:31:35] start run 77/160: p200_i250_r50, seed 10, 3. Neyman proportional
+[14:33:17] done run 25/160: p200_i500_r50, seed 4, 3. Neyman proportional, feasible=TRUE, elapsed=6115.0s
+[14:33:17] start run 78/160: p200_i1000_r50, seed 10, 3. Neyman proportional
+[14:33:36] done run 30/160: p200_i1000_r50, seed 4, 3. Neyman proportional, feasible=TRUE, elapsed=6133.8s
+[14:33:36] start run 79/160: p200_i500_r25, seed 10, 3. Neyman proportional
+[14:34:09] done run 55/160: p200_i500_r25, seed 7, 3. Neyman proportional, feasible=TRUE, elapsed=3075.9s
+[14:34:09] start run 80/160: p200_i500_r100, seed 10, 3. Neyman proportional
+[14:34:38] done run 22/160: p200_i1000_r50, seed 3, 3. Neyman proportional, feasible=TRUE, elapsed=6195.8s
+[14:34:38] start run 81/160: p200_i500_r50, seed 11, 3. Neyman proportional
+[14:36:00] done run 67/160: p100_i500_r50, seed 9, 3. Neyman proportional, feasible=TRUE, elapsed=1395.9s
+[14:36:00] start run 82/160: p50_i500_r50, seed 11, 3. Neyman proportional
+[14:37:17] done run 45/160: p200_i250_r50, seed 6, 3. Neyman proportional, feasible=TRUE, elapsed=4870.8s
+[14:37:17] start run 83/160: p100_i500_r50, seed 11, 3. Neyman proportional
+[14:41:31] done run 47/160: p200_i500_r25, seed 6, 3. Neyman proportional, feasible=TRUE, elapsed=4790.6s
+[14:41:31] start run 84/160: p400_i500_r50, seed 11, 3. Neyman proportional
+[14:43:44] done run 74/160: p50_i500_r50, seed 10, 3. Neyman proportional, feasible=TRUE, elapsed=1142.0s
+[14:43:45] start run 85/160: p200_i250_r50, seed 11, 3. Neyman proportional
+[14:44:34] done run 59/160: p100_i500_r50, seed 8, 3. Neyman proportional, feasible=TRUE, elapsed=3018.1s
+[14:44:35] start run 86/160: p200_i1000_r50, seed 11, 3. Neyman proportional
+[14:45:55] done run 8/160: p200_i500_r100, seed 1, 3. Neyman proportional, feasible=TRUE, elapsed=6873.3s
+[14:45:55] start run 87/160: p200_i500_r25, seed 11, 3. Neyman proportional
+[14:50:18] done run 48/160: p200_i500_r100, seed 6, 3. Neyman proportional, feasible=TRUE, elapsed=5065.5s
+[14:50:18] start run 88/160: p200_i500_r100, seed 11, 3. Neyman proportional
+[14:50:33] done run 82/160: p50_i500_r50, seed 11, 3. Neyman proportional, feasible=TRUE, elapsed=872.7s
+[14:50:33] start run 89/160: p200_i500_r50, seed 12, 3. Neyman proportional
+[15:02:03] done run 32/160: p200_i500_r100, seed 4, 3. Neyman proportional, feasible=TRUE, elapsed=7840.7s
+[15:02:03] start run 90/160: p50_i500_r50, seed 12, 3. Neyman proportional
+[15:03:06] done run 75/160: p100_i500_r50, seed 10, 3. Neyman proportional, feasible=TRUE, elapsed=1996.6s
+[15:03:06] start run 91/160: p100_i500_r50, seed 12, 3. Neyman proportional
+[15:04:44] done run 49/160: p200_i500_r50, seed 7, 3. Neyman proportional, feasible=TRUE, elapsed=5358.2s
+[15:04:44] start run 92/160: p400_i500_r50, seed 12, 3. Neyman proportional
+[15:05:43] done run 71/160: p200_i500_r25, seed 9, 3. Neyman proportional, feasible=TRUE, elapsed=2670.4s
+[15:05:43] start run 93/160: p200_i250_r50, seed 12, 3. Neyman proportional
+[15:06:55] done run 53/160: p200_i250_r50, seed 7, 3. Neyman proportional, feasible=TRUE, elapsed=5405.0s
+[15:06:55] start run 94/160: p200_i1000_r50, seed 12, 3. Neyman proportional
+[15:08:16] done run 24/160: p200_i500_r100, seed 3, 3. Neyman proportional, feasible=TRUE, elapsed=8214.5s
+[15:08:16] start run 95/160: p200_i500_r25, seed 12, 3. Neyman proportional
+[15:08:28] done run 65/160: p200_i500_r50, seed 9, 3. Neyman proportional, feasible=TRUE, elapsed=3590.3s
+[15:08:28] start run 96/160: p200_i500_r100, seed 12, 3. Neyman proportional
+[15:09:38] done run 90/160: p50_i500_r50, seed 12, 3. Neyman proportional, feasible=TRUE, elapsed=455.1s
+[15:09:38] start run 97/160: p200_i500_r50, seed 13, 3. Neyman proportional
+[15:16:40] done run 63/160: p200_i500_r25, seed 8, 3. Neyman proportional, feasible=TRUE, elapsed=4513.4s
+[15:16:40] start run 98/160: p50_i500_r50, seed 13, 3. Neyman proportional
+[15:17:38] done run 69/160: p200_i250_r50, seed 9, 3. Neyman proportional, feasible=TRUE, elapsed=3601.6s
+[15:17:38] start run 99/160: p100_i500_r50, seed 13, 3. Neyman proportional
+[15:20:42] done run 28/160: p400_i500_r50, seed 4, 3. Neyman proportional, feasible=TRUE, elapsed=8960.3s
+[15:20:42] start run 100/160: p400_i500_r50, seed 13, 3. Neyman proportional
+[15:20:49] done run 70/160: p200_i1000_r50, seed 9, 3. Neyman proportional, feasible=TRUE, elapsed=3602.3s
+[15:20:49] start run 101/160: p200_i250_r50, seed 13, 3. Neyman proportional
+[15:23:36] done run 54/160: p200_i1000_r50, seed 7, 3. Neyman proportional, feasible=TRUE, elapsed=6119.3s
+[15:23:36] start run 102/160: p200_i1000_r50, seed 13, 3. Neyman proportional
+[15:25:02] done run 79/160: p200_i500_r25, seed 10, 3. Neyman proportional, feasible=TRUE, elapsed=3086.6s
+[15:25:02] start run 103/160: p200_i500_r25, seed 13, 3. Neyman proportional
+[15:25:31] done run 87/160: p200_i500_r25, seed 11, 3. Neyman proportional, feasible=TRUE, elapsed=2376.1s
+[15:25:31] start run 104/160: p200_i500_r100, seed 13, 3. Neyman proportional
+[15:26:14] done run 98/160: p50_i500_r50, seed 13, 3. Neyman proportional, feasible=TRUE, elapsed=573.5s
+[15:26:14] start run 105/160: p200_i500_r50, seed 14, 3. Neyman proportional
+[15:26:49] done run 83/160: p100_i500_r50, seed 11, 3. Neyman proportional, feasible=TRUE, elapsed=2972.0s
+[15:26:49] start run 106/160: p50_i500_r50, seed 14, 3. Neyman proportional
+[15:27:05] done run 81/160: p200_i500_r50, seed 11, 3. Neyman proportional, feasible=TRUE, elapsed=3147.7s
+[15:27:05] start run 107/160: p100_i500_r50, seed 14, 3. Neyman proportional
+[15:28:40] done run 91/160: p100_i500_r50, seed 12, 3. Neyman proportional, feasible=TRUE, elapsed=1533.7s
+[15:28:40] start run 108/160: p400_i500_r50, seed 14, 3. Neyman proportional
+[15:30:29] done run 72/160: p200_i500_r100, seed 9, 3. Neyman proportional, feasible=TRUE, elapsed=4151.0s
+[15:30:29] start run 109/160: p200_i250_r50, seed 14, 3. Neyman proportional
+[15:35:55] done run 106/160: p50_i500_r50, seed 14, 3. Neyman proportional, feasible=TRUE, elapsed=546.0s
+[15:35:55] start run 110/160: p200_i1000_r50, seed 14, 3. Neyman proportional
+[15:36:24] done run 44/160: p400_i500_r50, seed 6, 3. Neyman proportional, feasible=TRUE, elapsed=9042.0s
+[15:36:24] start run 111/160: p200_i500_r25, seed 14, 3. Neyman proportional
+[15:39:13] done run 85/160: p200_i250_r50, seed 11, 3. Neyman proportional, feasible=TRUE, elapsed=3328.6s
+[15:39:13] start run 112/160: p200_i500_r100, seed 14, 3. Neyman proportional
+[15:39:55] done run 20/160: p400_i500_r50, seed 3, 3. Neyman proportional, feasible=TRUE, elapsed=10113.0s
+[15:39:55] start run 113/160: p200_i500_r50, seed 15, 3. Neyman proportional
+[15:39:59] done run 86/160: p200_i1000_r50, seed 11, 3. Neyman proportional, feasible=TRUE, elapsed=3324.4s
+[15:39:59] start run 114/160: p50_i500_r50, seed 15, 3. Neyman proportional
+[15:41:46] done run 107/160: p100_i500_r50, seed 14, 3. Neyman proportional, feasible=TRUE, elapsed=880.1s
+[15:41:46] start run 115/160: p100_i500_r50, seed 15, 3. Neyman proportional
+[15:50:47] done run 4/160: p400_i500_r50, seed 1, 3. Neyman proportional, feasible=TRUE, elapsed=10764.6s
+[15:50:47] start run 116/160: p400_i500_r50, seed 15, 3. Neyman proportional
+[15:51:33] done run 88/160: p200_i500_r100, seed 11, 3. Neyman proportional, feasible=TRUE, elapsed=3674.6s
+[15:51:33] start run 117/160: p200_i250_r50, seed 15, 3. Neyman proportional
+[15:52:55] done run 61/160: p200_i250_r50, seed 8, 3. Neyman proportional, feasible=TRUE, elapsed=7060.9s
+[15:52:55] start run 118/160: p200_i1000_r50, seed 15, 3. Neyman proportional
+[15:53:29] done run 62/160: p200_i1000_r50, seed 8, 3. Neyman proportional, feasible=TRUE, elapsed=6854.0s
+[15:53:29] start run 119/160: p200_i500_r25, seed 15, 3. Neyman proportional
+[15:53:38] done run 95/160: p200_i500_r25, seed 12, 3. Neyman proportional, feasible=TRUE, elapsed=2721.8s
+[15:53:38] start run 120/160: p200_i500_r100, seed 15, 3. Neyman proportional
+[15:53:48] done run 57/160: p200_i500_r50, seed 8, 3. Neyman proportional, feasible=TRUE, elapsed=7463.1s
+[15:53:48] start run 121/160: p200_i500_r50, seed 16, 3. Neyman proportional
+[15:53:53] done run 114/160: p50_i500_r50, seed 15, 3. Neyman proportional, feasible=TRUE, elapsed=833.6s
+[15:53:53] start run 122/160: p50_i500_r50, seed 16, 3. Neyman proportional
+[15:57:49] done run 36/160: p400_i500_r50, seed 5, 3. Neyman proportional, feasible=TRUE, elapsed=11186.9s
+[15:57:49] start run 123/160: p100_i500_r50, seed 16, 3. Neyman proportional
+[16:00:59] done run 99/160: p100_i500_r50, seed 13, 3. Neyman proportional, feasible=TRUE, elapsed=2601.0s
+[16:00:59] start run 124/160: p400_i500_r50, seed 16, 3. Neyman proportional
+[16:04:56] done run 73/160: p200_i500_r50, seed 10, 3. Neyman proportional, feasible=TRUE, elapsed=6163.6s
+[16:04:56] start run 125/160: p200_i250_r50, seed 16, 3. Neyman proportional
+[16:05:41] done run 12/160: p400_i500_r50, seed 2, 3. Neyman proportional, feasible=TRUE, elapsed=11659.1s
+[16:05:41] start run 126/160: p200_i1000_r50, seed 16, 3. Neyman proportional
+[16:06:02] done run 77/160: p200_i250_r50, seed 10, 3. Neyman proportional, feasible=TRUE, elapsed=5667.1s
+[16:06:02] start run 127/160: p200_i500_r25, seed 16, 3. Neyman proportional
+[16:08:24] done run 97/160: p200_i500_r50, seed 13, 3. Neyman proportional, feasible=TRUE, elapsed=3525.7s
+[16:08:24] start run 128/160: p200_i500_r100, seed 16, 3. Neyman proportional
+[16:12:48] done run 122/160: p50_i500_r50, seed 16, 3. Neyman proportional, feasible=TRUE, elapsed=1135.6s
+[16:12:48] start run 129/160: p200_i500_r50, seed 17, 3. Neyman proportional
+[16:15:52] done run 78/160: p200_i1000_r50, seed 10, 3. Neyman proportional, feasible=TRUE, elapsed=6155.1s
+[16:15:52] start run 130/160: p50_i500_r50, seed 17, 3. Neyman proportional
+[16:16:37] done run 115/160: p100_i500_r50, seed 15, 3. Neyman proportional, feasible=TRUE, elapsed=2091.4s
+[16:16:37] start run 131/160: p100_i500_r50, seed 17, 3. Neyman proportional
+[16:19:40] done run 101/160: p200_i250_r50, seed 13, 3. Neyman proportional, feasible=TRUE, elapsed=3531.3s
+[16:19:40] start run 132/160: p400_i500_r50, seed 17, 3. Neyman proportional
+[16:20:55] done run 89/160: p200_i500_r50, seed 12, 3. Neyman proportional, feasible=TRUE, elapsed=5422.1s
+[16:20:55] start run 133/160: p200_i250_r50, seed 17, 3. Neyman proportional
+[16:22:08] done run 103/160: p200_i500_r25, seed 13, 3. Neyman proportional, feasible=TRUE, elapsed=3425.3s
+[16:22:08] start run 134/160: p200_i1000_r50, seed 17, 3. Neyman proportional
+[16:22:24] done run 102/160: p200_i1000_r50, seed 13, 3. Neyman proportional, feasible=TRUE, elapsed=3528.6s
+[16:22:24] start run 135/160: p200_i500_r25, seed 17, 3. Neyman proportional
+[16:22:48] done run 64/160: p200_i500_r100, seed 8, 3. Neyman proportional, feasible=TRUE, elapsed=8209.9s
+[16:22:48] start run 136/160: p200_i500_r100, seed 17, 3. Neyman proportional
+[16:24:31] done run 104/160: p200_i500_r100, seed 13, 3. Neyman proportional, feasible=TRUE, elapsed=3539.7s
+[16:24:31] start run 137/160: p200_i500_r50, seed 18, 3. Neyman proportional
+[16:25:06] done run 130/160: p50_i500_r50, seed 17, 3. Neyman proportional, feasible=TRUE, elapsed=553.5s
+[16:25:06] start run 138/160: p50_i500_r50, seed 18, 3. Neyman proportional
+[16:27:38] done run 111/160: p200_i500_r25, seed 14, 3. Neyman proportional, feasible=TRUE, elapsed=3074.4s
+[16:27:38] start run 139/160: p100_i500_r50, seed 18, 3. Neyman proportional
+[16:35:21] done run 93/160: p200_i250_r50, seed 12, 3. Neyman proportional, feasible=TRUE, elapsed=5378.4s
+[16:35:21] start run 140/160: p400_i500_r50, seed 18, 3. Neyman proportional
+[16:40:00] done run 138/160: p50_i500_r50, seed 18, 3. Neyman proportional, feasible=TRUE, elapsed=894.6s
+[16:40:00] start run 141/160: p200_i250_r50, seed 18, 3. Neyman proportional
+[16:40:09] done run 119/160: p200_i500_r25, seed 15, 3. Neyman proportional, feasible=TRUE, elapsed=2800.8s
+[16:40:09] start run 142/160: p200_i1000_r50, seed 18, 3. Neyman proportional
+[16:40:58] done run 92/160: p400_i500_r50, seed 12, 3. Neyman proportional, feasible=TRUE, elapsed=5773.9s
+[16:40:58] start run 143/160: p200_i500_r25, seed 18, 3. Neyman proportional
+[16:43:15] done run 123/160: p100_i500_r50, seed 16, 3. Neyman proportional, feasible=TRUE, elapsed=2725.7s
+[16:43:15] start run 144/160: p200_i500_r100, seed 18, 3. Neyman proportional
+[16:47:10] done run 94/160: p200_i1000_r50, seed 12, 3. Neyman proportional, feasible=TRUE, elapsed=6015.0s
+[16:47:10] start run 145/160: p200_i500_r50, seed 19, 3. Neyman proportional
+[16:47:58] done run 139/160: p100_i500_r50, seed 18, 3. Neyman proportional, feasible=TRUE, elapsed=1219.8s
+[16:47:58] start run 146/160: p50_i500_r50, seed 19, 3. Neyman proportional
+[16:48:30] done run 121/160: p200_i500_r50, seed 16, 3. Neyman proportional, feasible=TRUE, elapsed=3282.2s
+[16:48:30] start run 147/160: p100_i500_r50, seed 19, 3. Neyman proportional
+[16:49:14] done run 52/160: p400_i500_r50, seed 7, 3. Neyman proportional, feasible=TRUE, elapsed=11547.5s
+[16:49:14] start run 148/160: p400_i500_r50, seed 19, 3. Neyman proportional
+[16:50:14] done run 127/160: p200_i500_r25, seed 16, 3. Neyman proportional, feasible=TRUE, elapsed=2651.5s
+[16:50:14] start run 149/160: p200_i250_r50, seed 19, 3. Neyman proportional
+[16:52:55] done run 105/160: p200_i500_r50, seed 14, 3. Neyman proportional, feasible=TRUE, elapsed=5201.7s
+[16:52:55] start run 150/160: p200_i1000_r50, seed 19, 3. Neyman proportional
+[16:54:01] done run 146/160: p50_i500_r50, seed 19, 3. Neyman proportional, feasible=TRUE, elapsed=362.7s
+[16:54:01] start run 151/160: p200_i500_r25, seed 19, 3. Neyman proportional
+[16:56:41] done run 109/160: p200_i250_r50, seed 14, 3. Neyman proportional, feasible=TRUE, elapsed=5172.2s
+[16:56:41] start run 152/160: p200_i500_r100, seed 19, 3. Neyman proportional
+[16:57:51] done run 131/160: p100_i500_r50, seed 17, 3. Neyman proportional, feasible=TRUE, elapsed=2474.1s
+[16:57:51] start run 153/160: p200_i500_r50, seed 20, 3. Neyman proportional
+[16:58:01] done run 125/160: p200_i250_r50, seed 16, 3. Neyman proportional, feasible=TRUE, elapsed=3185.4s
+[16:58:01] start run 154/160: p50_i500_r50, seed 20, 3. Neyman proportional
+[16:58:54] done run 126/160: p200_i1000_r50, seed 16, 3. Neyman proportional, feasible=TRUE, elapsed=3192.7s
+[16:58:54] start run 155/160: p100_i500_r50, seed 20, 3. Neyman proportional
+[17:00:25] done run 56/160: p200_i500_r100, seed 7, 3. Neyman proportional, feasible=TRUE, elapsed=11832.1s
+[17:00:25] start run 156/160: p400_i500_r50, seed 20, 3. Neyman proportional
+[17:00:38] done run 96/160: p200_i500_r100, seed 12, 3. Neyman proportional, feasible=TRUE, elapsed=6730.6s
+[17:00:38] start run 157/160: p200_i250_r50, seed 20, 3. Neyman proportional
+[17:02:06] done run 60/160: p400_i500_r50, seed 8, 3. Neyman proportional, feasible=TRUE, elapsed=11266.1s
+[17:02:06] start run 158/160: p200_i1000_r50, seed 20, 3. Neyman proportional
+[17:02:51] done run 110/160: p200_i1000_r50, seed 14, 3. Neyman proportional, feasible=TRUE, elapsed=5215.4s
+[17:02:51] start run 159/160: p200_i500_r25, seed 20, 3. Neyman proportional
+[17:06:25] done run 80/160: p200_i500_r100, seed 10, 3. Neyman proportional, feasible=TRUE, elapsed=9136.0s
+[17:06:25] start run 160/160: p200_i500_r100, seed 20, 3. Neyman proportional
+[17:10:11] done run 135/160: p200_i500_r25, seed 17, 3. Neyman proportional, feasible=TRUE, elapsed=2867.0s
+[17:11:03] done run 113/160: p200_i500_r50, seed 15, 3. Neyman proportional, feasible=TRUE, elapsed=5467.8s
+[17:11:30] done run 112/160: p200_i500_r100, seed 14, 3. Neyman proportional, feasible=TRUE, elapsed=5536.7s
+[17:12:04] done run 76/160: p400_i500_r50, seed 10, 3. Neyman proportional, feasible=TRUE, elapsed=9721.3s
+[17:12:16] done run 128/160: p200_i500_r100, seed 16, 3. Neyman proportional, feasible=TRUE, elapsed=3832.3s
+[17:15:41] done run 154/160: p50_i500_r50, seed 20, 3. Neyman proportional, feasible=TRUE, elapsed=1059.7s
+[17:22:27] done run 155/160: p100_i500_r50, seed 20, 3. Neyman proportional, feasible=TRUE, elapsed=1412.9s
+[17:23:46] done run 118/160: p200_i1000_r50, seed 15, 3. Neyman proportional, feasible=TRUE, elapsed=5451.3s
+[17:29:46] done run 84/160: p400_i500_r50, seed 11, 3. Neyman proportional, feasible=TRUE, elapsed=10094.7s
+[17:30:46] done run 143/160: p200_i500_r25, seed 18, 3. Neyman proportional, feasible=TRUE, elapsed=2988.4s
+[17:31:25] done run 117/160: p200_i250_r50, seed 15, 3. Neyman proportional, feasible=TRUE, elapsed=5991.9s
+[17:34:40] done run 68/160: p400_i500_r50, seed 9, 3. Neyman proportional, feasible=TRUE, elapsed=12091.1s
+[17:35:59] done run 147/160: p100_i500_r50, seed 19, 3. Neyman proportional, feasible=TRUE, elapsed=2848.5s
+[17:38:57] done run 151/160: p200_i500_r25, seed 19, 3. Neyman proportional, feasible=TRUE, elapsed=2696.7s
+[17:45:06] done run 137/160: p200_i500_r50, seed 18, 3. Neyman proportional, feasible=TRUE, elapsed=4834.8s
+[17:48:20] done run 120/160: p200_i500_r100, seed 15, 3. Neyman proportional, feasible=TRUE, elapsed=6881.8s
+[17:49:06] done run 159/160: p200_i500_r25, seed 20, 3. Neyman proportional, feasible=TRUE, elapsed=2775.0s
+[17:49:20] done run 129/160: p200_i500_r50, seed 17, 3. Neyman proportional, feasible=TRUE, elapsed=5792.0s
+[17:50:23] done run 133/160: p200_i250_r50, seed 17, 3. Neyman proportional, feasible=TRUE, elapsed=5367.6s
+[17:53:57] done run 142/160: p200_i1000_r50, seed 18, 3. Neyman proportional, feasible=TRUE, elapsed=4427.5s
+[17:56:53] done run 134/160: p200_i1000_r50, seed 17, 3. Neyman proportional, feasible=TRUE, elapsed=5685.2s
+[17:57:22] done run 141/160: p200_i250_r50, seed 18, 3. Neyman proportional, feasible=TRUE, elapsed=4641.9s
+[18:01:14] done run 153/160: p200_i500_r50, seed 20, 3. Neyman proportional, feasible=TRUE, elapsed=3803.3s
+[18:04:54] done run 144/160: p200_i500_r100, seed 18, 3. Neyman proportional, feasible=TRUE, elapsed=4899.4s
+[18:05:33] done run 157/160: p200_i250_r50, seed 20, 3. Neyman proportional, feasible=TRUE, elapsed=3894.5s
+[18:06:52] done run 158/160: p200_i1000_r50, seed 20, 3. Neyman proportional, feasible=TRUE, elapsed=3885.9s
+[18:16:07] done run 145/160: p200_i500_r50, seed 19, 3. Neyman proportional, feasible=TRUE, elapsed=5337.0s
+[18:18:30] done run 149/160: p200_i250_r50, seed 19, 3. Neyman proportional, feasible=TRUE, elapsed=5296.7s
+[18:19:52] done run 160/160: p200_i500_r100, seed 20, 3. Neyman proportional, feasible=TRUE, elapsed=4406.7s
+[18:20:44] done run 150/160: p200_i1000_r50, seed 19, 3. Neyman proportional, feasible=TRUE, elapsed=5268.2s
+[18:27:25] done run 136/160: p200_i500_r100, seed 17, 3. Neyman proportional, feasible=TRUE, elapsed=7476.6s
+[18:28:45] done run 152/160: p200_i500_r100, seed 19, 3. Neyman proportional, feasible=TRUE, elapsed=5523.4s
+[18:34:52] done run 108/160: p400_i500_r50, seed 14, 3. Neyman proportional, feasible=TRUE, elapsed=11172.5s
+[18:41:25] done run 116/160: p400_i500_r50, seed 15, 3. Neyman proportional, feasible=TRUE, elapsed=10238.5s
+[18:42:35] done run 100/160: p400_i500_r50, seed 13, 3. Neyman proportional, feasible=TRUE, elapsed=12112.2s
+[18:55:30] done run 124/160: p400_i500_r50, seed 16, 3. Neyman proportional, feasible=TRUE, elapsed=10470.2s
+[19:25:23] done run 140/160: p400_i500_r50, seed 18, 3. Neyman proportional, feasible=TRUE, elapsed=10201.5s
+[19:32:22] done run 132/160: p400_i500_r50, seed 17, 3. Neyman proportional, feasible=TRUE, elapsed=11562.2s
+[19:38:29] done run 148/160: p400_i500_r50, seed 19, 3. Neyman proportional, feasible=TRUE, elapsed=10155.6s
+[19:42:46] done run 156/160: p400_i500_r50, seed 20, 3. Neyman proportional, feasible=TRUE, elapsed=9741.0s

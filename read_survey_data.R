@@ -145,14 +145,17 @@ read_survey_data <- function(data,
       call. = FALSE
     )
   }
-  
-  # --- 6. Coerce y_var to numeric --------------------------------------------
+    # --- 6. Coerce y_var to numeric --------------------------------------------
   y_original <- out[[y_var]]
-  out[[y_var]] <- suppressWarnings(as.numeric(out[[y_var]]))
+  y_numeric  <- suppressWarnings(as.numeric(as.character(out[[y_var]])))
   
-  # Warn if coercion itself introduced new NAs (i.e. non-numeric strings)
-  coercion_nas <- is.na(out[[y_var]]) & !is.na(y_original)
-  if (any(coercion_nas)) {
+  # Safely check if coercion introduced new NAs
+  coercion_nas <- is.na(y_numeric) & !is.na(y_original)
+  coercion_nas <- coercion_nas & !is.na(coercion_nas) # Remove potential NAs from logical check
+  
+  out[[y_var]] <- y_numeric
+  
+  if (isTRUE(any(coercion_nas))) {
     warning(
       sum(coercion_nas), " value(s) in `", y_var,
       "` could not be coerced to numeric and were set to NA.\n",
@@ -160,7 +163,6 @@ read_survey_data <- function(data,
       call. = FALSE
     )
   }
-  
   # --- 7. Handle missing values in y_var -------------------------------------
   n_missing <- sum(is.na(out[[y_var]]))
   
