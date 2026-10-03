@@ -6,9 +6,9 @@ library(GA)
 library(ggplot2)
 library(tidyr)
 
-joint_ga_pop_size <- 200
-joint_ga_maxiter <- 500
-joint_ga_run <- 50
+joint_ga_pop_size <- 100
+joint_ga_maxiter <- 100
+joint_ga_run <- 25
 joint_ga_seed_count <- 100 # The number of multiple runs - increase to at least 25 for final check for presentation
 # Because there are 4 c_h starting solutions, there will be 4 * joint_ga_seed_count runs of the GA
 joint_ga_max_candidate_c <- 1000
