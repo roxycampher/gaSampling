@@ -6,7 +6,7 @@ library(ggplot2)
 # Folders and appearance
 # ------------------------------------------------------------
 input_dir <- "C:/Users/roxyc/OneDrive - University of Cape Town/Documents/UCT/2026/Project/gaSampling/hyperparameter_sensitivity_results"
-output_dir <- "C:/Users/roxyc/OneDrive - University of Cape Town/Documents/UCT/2026/Project/gaSampling/hyperparameter_faceted_plots"
+output_dir <- "C:/Users/roxyc/OneDrive - University of Cape Town/Documents/UCT/2026/Project/gaSampling/hyperparameter_faceted_plots3"
 plot_dpi <- 200
 
 # ------------------------------------------------------------
@@ -91,26 +91,57 @@ boxplot_by_population <- function(data, variable, title, y_label) {
 # ------------------------------------------------------------
 # Variance, paired changes, runtime and generations
 # ------------------------------------------------------------
-variance_plot <- boxplot_by_population(filter(run_summary, feasible), "variance",
+variance_plot <- boxplot_by_population(filter(run_summary, feasible, popSize != 50), "variance",
                                        "Variance by population size.", "Final variance (feasible runs)")
-paired_variance_plot <- boxplot_by_population(paired, "variance_change_pct",
+variance_p50_plot <- boxplot_by_population(filter(run_summary, feasible, popSize == 50), "variance",
+                                           "Variance: population size 50.", "Final variance (feasible runs)")
+# Split the saved comparisons without changing their original baseline.
+make_paired_plot <- function(data) {
+  boxplot_by_population(data, "variance_change_pct",
                                               "Paired comparison with baseline.", "Variance change from baseline (%)") +
   geom_hline(yintercept = 0, linetype = "dashed", colour = "grey45") +
   labs(subtitle = "Negative values favour the configuration; feasible pairs only")
-# Individual run times, not configuration medians, form the runtime boxes.
+}
+paired_variance_plot <- make_paired_plot(filter(paired, popSize != 50))
+paired_variance_p50_plot <- make_paired_plot(filter(paired, popSize == 50))
+# One point per feasible run; run is the stopping-patience limit.
 runtime_data <- run_summary |>
-  filter(is.na(error)) |>
+  filter(is.na(error), feasible, is.finite(variance), is.finite(elapsed_seconds)) |>
   mutate(runtime_hours = elapsed_seconds / 3600)
-runtime_plot <- boxplot_by_population(runtime_data, "runtime_hours",
-                                      "Runtime by population size.", "Runtime (hours)")
-generation_plot <- boxplot_by_population(run_summary, "generations",
-                                         "Generations used.", "Actual generations") +
-  geom_point(aes(y = maxiter), position = position_dodge(0.8),
-             shape = 4, size = 2, na.rm = TRUE) +
-  labs(subtitle = "Crosses mark the maximum allowed generations.")
+patience_colours <- c("25" = "#4477AA", "50" = "#EE6677", "100" = "#228833")
+if (!all(as.character(patience_levels) %in% names(patience_colours))) {
+  patience_colours <- setNames(grDevices::hcl.colors(length(patience_levels), "Dark 3"),
+                               as.character(patience_levels))
+}
+runtime_scatter <- function(data) {
+  ggplot(data, aes(runtime_hours, variance, colour = patience)) +
+    geom_point(size = 2, alpha = 0.55) +
+    scale_colour_manual(values = patience_colours, drop = FALSE,
+                        name = "Stopping patience (run)") +
+    population_facets(data) + plot_theme +
+    labs(title = "Runtime versus final variance by population size.",
+         subtitle = "Each point represents one feasible GA run.",
+         x = "Runtime (hours)", y = "Final variance",
+         caption = "All tested generation limits are included; overlapping runs may coincide.")
+}
+runtime_plot <- runtime_scatter(filter(runtime_data, popSize != 50))
+runtime_p50_plot <- runtime_scatter(filter(runtime_data, popSize == 50))
+
+make_generation_plot <- function(data) {
+  boxplot_by_population(data, "generations", "Generations used.", "Actual generations") +
+    geom_point(aes(y = maxiter), position = position_dodge(0.8),
+               shape = 4, size = 2, na.rm = TRUE) +
+    labs(subtitle = "Crosses mark the maximum allowed generations.")
+}
+generation_plot <- make_generation_plot(filter(run_summary, popSize != 50))
+generation_p50_plot <- make_generation_plot(filter(run_summary, popSize == 50))
+generation_p50_plot
 variance_plot
 paired_variance_plot
 runtime_plot
+variance_p50_plot
+paired_variance_p50_plot
+runtime_p50_plot
 generation_plot
 
 # ------------------------------------------------------------
@@ -193,12 +224,16 @@ save_plot <- function(plot, name, width = 12, height = 8) {
   }
 }
 plots <- list(variance_boxplots = variance_plot, paired_variance_change = paired_variance_plot,
-              runtime_boxplots = runtime_plot, generation_boxplots = generation_plot,
+              runtime_vs_variance = runtime_plot, generation_boxplots = generation_plot,
               feasibility_rates = feasibility_plot, fallback_rates = fallback_plot,
               gauteng_ch_stability = gauteng_ch_plot,
               gauteng_kh_stability = gauteng_kh_plot,
               gauteng_nh_stability = gauteng_nh_plot)
 for (name in names(plots)) save_plot(plots[[name]], name)
+save_plot(variance_p50_plot, "variance_boxplots_p50", width = 7, height = 5)
+save_plot(paired_variance_p50_plot, "paired_variance_change_p50", width = 7, height = 5)
+save_plot(runtime_p50_plot, "runtime_vs_variance_p50", width = 7, height = 5)
+save_plot(generation_p50_plot, "generation_boxplots_p50", width = 7, height = 5)
 allocation_plots <- list()
 for (population_size in population_levels) {
   population_data <- filter(allocation_plot_data, popSize == population_size)
