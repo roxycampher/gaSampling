@@ -1,187 +1,216 @@
 # gaSampling
 
-Multistage stratified cluster sampling package for two-stage allocation using
-genetic algorithms.
+Genetic algorithm allocation for stratified two-stage cluster sampling in R.
 
-## Main Diagnostic Script
+gaSampling searches for the number of clusters to sample in each stratum
+and the number of units to sample within each selected cluster. The aim is
+to minimise the variance of the overall mean while satisfying sample-size,
+allocation and budget constraints.
 
-Use `final_diagnostic_checks_present.R` when you want to test the full joint
-GA workflow on the ECDC data and produce stability summaries, plots and CSV
-outputs.
+The project is under development and currently runs by sourcing R scripts.
 
-Before running it, make sure these files are in the same working directory:
+## Overview
 
-- `ecdc-2021-public-v2.csv`
-- `read_survey_data.R`
-- `sampling_frame.R`
-- `feasible_joint_start.R`
-- `repair_joint.R`
-- `check_constraints.R`
-- `variance_twostage.R`
-- `cost_twostage.R`
-- `fitness_ch_kh.R`
-- `allocate_twostage_joint.R`
+In a stratified two-stage design, the population is divided into strata.
+Clusters are selected within each stratum, followed by units within each
+selected cluster.
 
-Run the script line by line in RStudio if you want to inspect each object as it
-is created. The multiple-run section can take longer, so reduce
-`joint_ga_seed_count` if you only want a quick check.
+The joint allocation procedure searches over:
 
-## Final Diagnostics Flow
+- `c_h`: the number of sampled clusters in stratum h.
+- `k_h`: the number of sampled units per cluster in stratum h.
 
-The final diagnostics script follows this flow:
+The resulting stratum sample size is `n_h = c_h * k_h`.
 
-1. Load packages and source helper functions.
-2. Read `ecdc-2021-public-v2.csv`.
-3. Clean the survey data with `read_survey_data()`.
-4. Build the stratum-level sampling frame with `prepare_sampling_frame()`.
-5. Set the optimization target:
-   - `total_n <- 5000`
-   - `max_cost <- 1400000`
-   - GA settings such as population size, iterations, and seeds.
-6. Find a feasible starting allocation with `find_feasible_joint_start()`.
-7. Run one joint GA from the repaired Neyman starting allocation.
-8. Run repeated joint GAs across starting suggestions and random seeds.
-9. Summarise feasibility, variance, total cost, and allocation stability.
-10. Save plots and CSV summaries to `joint_ga_stability_plots/`.
+The project provides functions to prepare stratum summaries, construct
+starting allocations, repair candidate allocations, run the genetic
+algorithm and check the resulting constraints.
 
-## Function Flow
+## Setup
 
-`read_survey_data.R`
-
-Standardises the raw survey data. It creates the common columns used by the rest
-of the workflow, especially `strata`, `cluster` and the analysis variable.
-
-`sampling_frame.R`
-
-Uses the cleaned data to create a stratum-level frame. The important output is:
+Install the GA package if it is not already available:
 
 ```r
-frame$strata
+install.packages("GA")
 ```
 
-This contains one row per stratum with population size, cluster counts, stratum
-weights, variance components and cost variables.
-
-`feasible_joint_start.R`
-
-Finds a feasible starting allocation for the joint GA. The key function is:
+From the project directory, load the functions needed for the example:
 
 ```r
-find_feasible_joint_start()
+source("variance_twostage.R")
+source("cost_twostage.R")
+source("repair_joint.R")
+source("check_constraints.R")
+source("fitness_ch_kh.R")
+source("allocate_twostage_joint.R")
 ```
 
-It tries several candidate total cluster counts, allocates clusters across
-strata using different starting rules, repairs each allocation and checks
-whether the repaired allocation satisfies the sample-size and cost constraints.
+## Quick example
 
-The main returned values are:
+This example uses illustrative stratum summaries and costs. It does not
+require an external dataset.
 
 ```r
-joint_start$total_c
-joint_start$c_h
-joint_start$k_h
-joint_start$suggestion
-joint_start$all_starts
-joint_start$diagnostics
+strata <- data.frame(
+  stratum = c("A", "B"),
+  C_h = c(20, 25),
+  W_h = c(0.4, 0.6),
+  sigma2_bh = c(2, 3),
+  sigma2_wh = c(6, 9),
+  cost_cluster = c(100, 120),
+  cost_unit = c(5, 6)
+)
+
+result <- allocate_twostage_ga_joint(
+  strata = strata,
+  total_n = 150,
+  max_cost = 3900,
+  popSize = 50,
+  maxiter = 100,
+  run = 20,
+  seed = 123,
+  suggestion = c(10, 15, 5, 8)
+)
 ```
 
-Use `joint_start$suggestion` as the starting vector for
-`allocate_twostage_ga_joint()`.
+The starting suggestion contains cluster counts for all strata followed
+by unit counts per cluster: `c(c_h, k_h)`.
 
-`repair_joint.R`
-
-Contains `repair_ckh()`, which adjusts proposed `c_h` and `k_h` values so that
-the allocation is closer to the requested sample size and budget constraints.
-
-`check_constraints.R`
-
-Checks whether an allocation is feasible. It verifies:
-
-- integer `c_h` and `k_h`,
-- lower and upper bounds,
-- total sample size,
-- total cost,
-- minimum budget use and upper budget tolerance.
-
-`fitness_ch_kh.R`
-
-Defines the constrained fitness function used by the joint GA. Infeasible
-solutions are penalised; feasible solutions are evaluated by variance.
-
-`allocate_twostage_joint.R`
-
-Runs the joint GA over both allocation vectors:
+Check feasibility before interpreting the allocation:
 
 ```r
-c_h = sampled clusters per stratum
-k_h = sampled units per selected cluster
+result$feasible
+result$constraint_check
+result$allocation
 ```
 
-It then repairs the final GA solution and returns the final allocation,
-variance, total sample size, total cost, feasibility status and repair details.
-
-## Interpreting Key Objects
-
-`joint_starting_suggestions`
-
-Shows the repaired starting allocations for each starting rule. Use this to see
-whether the starting allocations are feasible before the GA runs.
-
-`starting_suggestion_diagnostics`
-
-Summarises each starting rule at the total-allocation level, including repaired
-sample size, repaired total cost, feasibility and repair iterations.
-
-`ga_result`
-
-The single joint GA run from the repaired Neyman proportional start.
-
-`run_summary`
-
-One row per repeated GA run. This is the main table for checking stability
-across seeds and starting suggestions.
-
-`suggestion_run_summary`
-
-Summarises variance, feasibility rate, cost and repair behaviour by starting
-suggestion.
-
-`allocation_summary`
-
-Shows how stable each stratum's `c_h`, `k_h` and `n_h` allocations are across
-repeated runs.
-
-## Important Notes
-
-The feasible-start helper finds a feasible starting allocation, not the final
-optimal allocation. The joint GA can still move both `c_h` and `k_h`.
-
-If cost parameters change, update them consistently in `prepare_sampling_frame()`
-and in any affordability calculation. With the current cost model:
+Inspect the objective and achieved totals:
 
 ```r
-total_cost = sum(c_h * cost_cluster) + sum(c_h * k_h * cost_unit)
+result$variance
+result$total_n
+result$total_cost
+result$fallback_used
 ```
 
-A rough affordable cluster cap is:
+The settings above provide a small demonstration. Assess stability across
+multiple random seeds before choosing settings for a substantive analysis.
+
+## Input data
+
+The joint allocation function expects one row per stratum with these columns:
+
+| Column | Meaning |
+|--------|---------|
+| `stratum` | Stratum identifier |
+| `C_h` | Number of available clusters |
+| `W_h` | Stratum population weight |
+| `sigma2_bh` | Between-cluster variance component |
+| `sigma2_wh` | Within-cluster variance component |
+| `cost_cluster` | Cost per sampled cluster |
+| `cost_unit` | Cost per sampled secondary unit |
+
+Population weights should sum to one. Variance components and costs must
+refer to the same outcome, design and cost assumptions used in the analysis.
+Use a consistent currency for all costs.
+
+For workflows beginning with unit-level data, `read_survey_data()` and
+`prepare_sampling_frame()` provide data preparation helpers.
+
+## Objective and constraints
+
+The variance objective is:
 
 ```r
-affordable_c <- floor((max_cost - cost_unit * total_n) / cost_cluster)
+sum(W_h^2 * (
+  sigma2_bh / c_h +
+  sigma2_wh / (c_h * k_h)
+))
 ```
 
-For repeated runs, start with a small `joint_ga_seed_count` while developing.
-Increase it only when you need stronger stability evidence.
+Total cost is:
 
-## NB Frame Size and Feasible GA Starting Values
+```r
+sum(cost_cluster * c_h + cost_unit * c_h * k_h)
+```
 
-Two helper functions are important for making the joint two-stage GA behave reliably: `frame_c()` and `find_feasible_joint_start()`.
+The current joint allocator applies these constraints:
 
-### `frame_c()`
+- Cluster and unit counts are integers.
+- Each stratum has at least two sampled clusters.
+- Cluster counts do not exceed `C_h`.
+- Units per cluster range from one to `total_n`.
+- The achieved total sample size meets or exceeds `total_n`.
+- When a budget is supplied, spending falls between 95% and 102%
+  of `max_cost`, using the current helper defaults.
 
-`frame_c()` calculates a realistic upper limit for the number of clusters that can be included in the sampling frame, given the available budget, unit cost, cluster cost, and target sample size.
+`total_n` is a minimum requirement, so the returned allocation may exceed it.
+Similarly, `max_cost` is a reference budget with an upper tolerance, rather
+than a strict spending ceiling. Supply `max_cost = NULL` to disable budget
+constraints.
 
-The logic is:
+## Understanding the results
 
-available_c <- nrow(unique(survey_data[c("strata", "cluster")]))
-affordable_c <- floor((max_cost - unit_cost * total_n) / cluster_cost)
-min(available_c, affordable_c)
+`allocate_twostage_ga_joint()` returns a list containing:
+
+| Component | Meaning |
+|-----------|---------|
+| `feasible` | Whether the returned allocation passes the constraints |
+| `allocation` | Stratum allocations and variance contributions |
+| `variance` | Total variance for the returned allocation |
+| `between_variance` | Between-cluster contribution to total variance |
+| `within_variance` | Within-cluster contribution to total variance |
+| `total_n` | Achieved total sample size |
+| `total_cost` | Achieved total cost |
+| `constraint_check` | Separate indicators for each constraint |
+| `repair` | Allocation repair results and diagnostics |
+| `fallback_used` | Whether a repaired starting suggestion replaced an infeasible GA result |
+| `ga_object` | The fitted genetic algorithm object |
+
+The final allocation can differ from the solution stored in `ga_object`
+because of repair or fallback. Use `result$allocation` when reporting
+the returned design.
+
+## Main source files
+
+| File | Purpose |
+|------|---------|
+| `read_survey_data.R` | Standardise unit-level survey data |
+| `sampling_frame.R` | Construct stratum-level sampling summaries |
+| `feasible_joint_start.R` | Construct and assess starting allocations |
+| `allocate_twostage_joint.R` | Run the joint genetic algorithm |
+| `fitness_ch_kh.R` | Evaluate candidate allocation fitness |
+| `repair_joint.R` | Attempt to repair cluster and unit allocations |
+| `check_constraints.R` | Check allocation feasibility |
+| `variance_twostage.R` | Calculate the variance objective |
+| `cost_twostage.R` | Calculate total sampling cost |
+| `frame_c.R` | Calculate an available and affordable total cluster count |
+| `sample_size_feasibility.R` | Provide sample-size feasibility and greatest-common-divisor helpers |
+
+## Assumptions and limitations
+
+The genetic algorithm and repair procedure are heuristic. They do not
+guarantee a global optimum or a feasible result. Always inspect `feasible`
+and the constraint diagnostics.
+
+The variance calculation does not include finite population corrections.
+
+Within each stratum, the allocation uses a common number of sampled units
+per selected cluster. The current joint allocator does not enforce observed
+unit capacity for each individual cluster.
+
+Results depend on variance estimates, cost assumptions, starting values
+and genetic algorithm settings. Record these inputs and the random seed
+when reporting an analysis.
+
+The procedure returns allocation counts, it does not select the actual
+clusters or units.
+
+## Planned vignettes
+
+The following guides are planned:
+
+- Preparing survey data and building stratum summaries.
+- Running and interpreting a joint two-stage allocation.
+- Diagnosing infeasible allocations and budget constraints.
+- Assessing stability across starting values and random seeds.
