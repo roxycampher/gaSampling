@@ -126,7 +126,7 @@ repair_joint <- function(c_h,
                        max_cost = NULL,
                        cost_cluster = NULL,
                        cost_unit = NULL,
-                       min_budget_use = 0.95, # hard coded for now
+                       min_budget_use = 0.95,
                        budget_tol = 0.02) {
   L <- length(c_h)
   use_cost <- !is.null(max_cost)

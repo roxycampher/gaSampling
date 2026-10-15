@@ -193,7 +193,7 @@ find_feasible_joint_start <- function(strata,
         L
       )
 
-      repaired <- repair_ckh(
+      repaired <- repair_joint(
         c_h = initial_c_h,
         k_h = initial_k_h,
         total_n = total_n,

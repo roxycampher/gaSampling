@@ -1,0 +1,110 @@
+> ga_result$allocation
+        stratum c_h k_h  n_h var_between  var_within  var_total
+1  Eastern Cape  36  13  468  0.04825576 0.006916480 0.05517224
+2    Free State  20  13  260  0.02576864 0.006271246 0.03203988
+3       Gauteng  85  16 1360  0.11677231 0.028354061 0.14512637
+4 KwaZulu-Natal  62  14  868  0.08540383 0.016551634 0.10195546
+5       Limpopo  42  13  546  0.05768856 0.014885896 0.07257446
+6    Mpumalanga  31  13  403  0.04141302 0.010228974 0.05164199
+7    North West  27  13  351  0.03687402 0.005256626 0.04213065
+8 Northern Cape   9  14  126  0.01069292 0.001186851 0.01187977
+9  Western Cape  48  13  624  0.05592293 0.014215732 0.07013867
+> ga_result$variance
+[1] 0.5826595
+> ga_result$total_n
+[1] 5006
+> ga_result$total_cost
+[1] 1400600
+> ga_result$feasible
+[1] TRUE
+> ga_result$constraint_check
+$feasible
+[1] TRUE
+
+$integer_ok
+[1] TRUE
+
+$cluster_ok
+[1] TRUE
+
+$unit_ok
+[1] TRUE
+
+$sample_size_ok
+[1] TRUE
+
+$cost_ok
+[1] TRUE
+
+$total_n
+[1] 5006
+
+$total_cost
+[1] 1400600
+
+$n_h
+[1]  468  260 1360  868  546  403  351  126  624
+
+> ga_result$repair
+$c_h
+[1] 36 20 85 62 42 31 27  9 48
+
+$k_h
+[1] 13 13 16 14 13 13 13 14 13
+
+$n_h
+[1]  468  260 1360  868  546  403  351  126  624
+
+$total_n
+[1] 5006
+
+$target_total_n
+[1] 5000
+
+$total_cost
+[1] 1400600
+
+$max_cost
+[1] 1400000
+
+$lower_cost_bound
+[1] 1330000
+
+$upper_cost_bound
+[1] 1428000
+
+$cost_gap
+[1] 600
+
+$cost_over
+[1] 0
+
+$budget_underuse
+[1] 0
+
+$budget_use_pct
+[1] 100.0429
+
+$lower_cost_ok
+[1] TRUE
+
+$upper_cost_ok
+[1] TRUE
+
+$cost_ok
+[1] TRUE
+
+$sample_size_gap
+[1] 6
+
+$sample_shortfall
+[1] 0
+
+$sample_size_ok
+[1] TRUE
+
+$repaired_exactly
+[1] TRUE
+
+$iterations
+[1] 1

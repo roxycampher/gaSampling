@@ -114,15 +114,31 @@ if (!all(as.character(patience_levels) %in% names(patience_colours))) {
                                as.character(patience_levels))
 }
 runtime_scatter <- function(data) {
-  ggplot(data, aes(runtime_hours, variance, colour = patience)) +
+  ggplot(data, aes(
+    runtime_hours, variance,
+    colour = patience,
+    shape = factor(maxiter)
+  )) +
     geom_point(size = 2, alpha = 0.55) +
-    scale_colour_manual(values = patience_colours, drop = FALSE,
-                        name = "Stopping patience (run)") +
+    scale_colour_manual(
+      values = patience_colours, drop = FALSE,
+      name = "Stopping patience (run)"
+    ) +
+    scale_shape_manual(
+      values = c("250" = 16, "500" = 17, "1000" = 15),
+      name = "Maximum generations"
+    ) +
     population_facets(data) + plot_theme +
-    labs(title = "Runtime versus final variance by population size.",
-         subtitle = "Each point represents one feasible GA run.",
-         x = "Runtime (hours)", y = "Final variance",
-         caption = "All tested generation limits are included; overlapping runs may coincide.")
+    labs(
+      title = "Runtime versus final variance by population size.",
+      subtitle = "Each point represents one feasible GA run.",
+      x = "Runtime (hours)",
+      y = "Final variance",
+      caption = paste(
+        "Shapes indicate maximum generation limits;",
+        "overlapping runs may coincide."
+      )
+    )
 }
 runtime_plot <- runtime_scatter(filter(runtime_data, popSize != 50))
 runtime_p50_plot <- runtime_scatter(filter(runtime_data, popSize == 50))
