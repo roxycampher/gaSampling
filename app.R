@@ -51,6 +51,32 @@ if (is.null(app_dir) || !dir.exists(app_dir)) app_dir <- getwd()
 
 lookup_dir <- if (dir.exists(file.path(app_dir, "R"))) file.path(app_dir, "R") else app_dir
 
+# --- Bundled example (ECDC 2021 public data) --------------------------------
+# Drop ecdc-2021-public-v2.csv next to app.R (or in a data/ subfolder) and the
+# "Load ECDC example" button in Step 1 will pick it up.
+EXAMPLE_FILE <- "ecdc-2021-public-v2.csv"
+example_hits <- c(
+  file.path(app_dir, EXAMPLE_FILE), file.path(app_dir, "data", EXAMPLE_FILE),
+  file.path(lookup_dir, EXAMPLE_FILE), file.path(lookup_dir, "data", EXAMPLE_FILE)
+)
+example_hits <- example_hits[file.exists(example_hits)]
+example_path <- if (length(example_hits) > 0) example_hits[1] else NA_character_
+
+# Case study from the paper (Table 2): ECDC 2021, provinces as strata, wards as
+# clusters, n = 5,000, budget R1,400,000, R2,500 per ward and R100 per centre.
+# total_c = (max_cost - cost_unit * total_n) / cost_cluster
+#         = (1,400,000 - 100 * 5,000) / 2,500 = 360 affordable clusters.
+# EXAMPLE uses reduced GA settings so a first run finishes quickly; PAPER_GA
+# holds the settings used in the paper (population 200, 500 generations,
+# stop after 25 stagnant generations, seed 123).
+EXAMPLE <- list(
+  stratum = "province", cluster = "id_ward", y_var = "count_children_present",
+  total_c = 360, cost_cluster = 2500, cost_unit = 100,
+  total_n = 5000, max_cost = 1400000,
+  popSize = 50, maxiter = 100, run = 15, seed = 123
+)
+PAPER_GA <- list(popSize = 200, maxiter = 500, run = 25, seed = 123)
+
 # Only evaluate top-level expressions of the form `name <- function(...) ...`
 # (or `name = function(...) ...` / `assign("name", function(...) ...)`).
 # Everything else in the file is left untouched.
@@ -93,7 +119,8 @@ if (length(missing_files) > 0) {
 }
 
 # Sanity-check the three functions the app calls directly.
-entry_point_fns <- c("read_survey_data", "prepare_sampling_frame", "allocate_twostage_ga_joint")
+entry_point_fns <- c("read_survey_data", "prepare_sampling_frame",
+                     "allocate_twostage_ga_joint", "find_feasible_joint_start")
 missing_fns <- entry_point_fns[!vapply(entry_point_fns, exists, logical(1))]
 if (is.null(missing_fn_msg) && length(missing_fns) > 0) {
   missing_fn_msg <- paste0(
@@ -221,8 +248,8 @@ app_theme_head <- tags$head(
       border-bottom: 2px solid transparent;
       background: transparent !important;
     }
-    .nav-tabs > li.active > a, 
-    .nav-tabs > li.active > a:hover, 
+    .nav-tabs > li.active > a,
+    .nav-tabs > li.active > a:hover,
     .nav-tabs > li.active > a:focus {
       color: var(--ink) !important;
       font-weight: 600;
@@ -230,6 +257,23 @@ app_theme_head <- tags$head(
       border-bottom: 2px solid var(--accent);
       background: transparent !important;
     }
+
+    table.dataTable thead th{ font-weight:600; color:var(--ink); }
+    table.dataTable tfoot th{
+      font-weight:600; text-align:right;
+      border-top:2px solid var(--panel-border);
+    }
+    table.dataTable tfoot th:first-child{ text-align:left; }
+
+    .hint-box{
+      background:var(--accent-soft); border:1px solid var(--panel-border);
+      border-radius:8px; padding:12px 14px; margin-top:14px;
+      font-size:0.85rem; color:var(--ink);
+    }
+    .hint-box p{ margin:0 0 6px; }
+    .hint-box p:last-child{ margin-bottom:0; }
+    .hint-box .btn{ margin-top:6px; }
+    .hint-bad{ background:#F3E1DE; border-color:#D9B4AE; }
 
     @media (max-width: 767px){
       .main-frame .col-sm-4{ border-right:none; border-bottom:1px solid var(--panel-border); padding-right:0; padding-bottom:20px; margin-bottom:20px; }
@@ -272,6 +316,8 @@ ui <- fluidPage(
             sidebarPanel(
               width = 4,
               fileInput("file_upload", "Upload SSU-level CSV", accept = ".csv"),
+              actionButton("btn_example", "Load ECDC example instead", class = "btn-default btn-sm"),
+              helpText("Fills in province / id_ward / count_children_present for you."),
               uiOutput("column_pickers"),
               radioButtons(
                 "na_action", "Missing y_var handling",
@@ -304,6 +350,15 @@ ui <- fluidPage(
               numericInput("total_c", "total_c (clusters to allocate)", value = 20, min = 1, step = 1),
               numericInput("cost_cluster", "cost_cluster (per stratum, or single value)", value = 1, min = 0),
               numericInput("cost_unit", "cost_unit (per stratum, or single value)", value = 1, min = 0),
+              div(
+                class = "hint-box",
+                p(strong("Choosing total_c")),
+                p("Keep it at or below the clusters you can afford:",
+                  "(max_cost - cost_unit x total_n) / cost_cluster."),
+                p("Paper case study (ECDC): 360 clusters at R2,500 per ward and R100 per centre."),
+                actionButton("btn_example_frame", "Use example values", class = "btn-default btn-sm")
+              ),
+              br(),
               actionButton("btn_frame", "Build sampling frame", class = "btn-primary"),
               hr(),
               helpText("Requires Step 1 to be completed first. Output feeds directly into Step 3.")
@@ -324,32 +379,57 @@ ui <- fluidPage(
         tabPanelBody(
           "step3",
           h3("Allocation", class = "stage-title"),
-          p("Run the GA and review the resulting allocation.", class = "stage-help"),
+          p("A feasible Neyman starting point is built first, then the GA refines it.", class = "stage-help"),
           sidebarLayout(
             sidebarPanel(
               width = 4,
-              numericInput("total_n", "total_n (target sample size)", value = 500, min = 1, step = 1),
-              numericInput("max_cost", "max_cost", value = 10000, min = 0),
+              numericInput("total_n", "total_n (target sample size)", value = 5000, min = 1, step = 1),
+              numericInput("max_cost", "max_cost", value = 1400000, min = 0),
+              checkboxInput("use_neyman", "Start the GA from a feasible Neyman suggestion (faster)", value = TRUE),
               numericInput("popSize", "GA popSize", value = 100, min = 10, step = 10),
-              numericInput("maxiter", "GA maxiter", value = 1000, min = 10, step = 10),
-              numericInput("run", "GA run (early stop)", value = 50, min = 5, step = 5),
+              numericInput("maxiter", "GA maxiter", value = 500, min = 10, step = 10),
+              numericInput("run", "GA run (early stop)", value = 30, min = 5, step = 5),
               numericInput("seed", "seed (blank = random)", value = NA),
-              actionButton("btn_ga", "Run GA allocation", class = "btn-primary"),
+              uiOutput("feasibility_hint"),
+              div(
+                class = "hint-box",
+                p(strong("Getting a feasible run")),
+                p("The budget must cover total_n x cost_unit first; what is left buys clusters.",
+                  "total_n also cannot exceed the SSUs in the frame."),
+                p("Paper case study: n = 5,000 and budget R1,400,000.",
+                  "The quick settings (popSize 50, maxiter 100, run 15) finish faster than the",
+                  "paper's (200, 500, 25) and may land on a slightly different allocation."),
+                actionButton("btn_example_ga", "Use quick example values", class = "btn-default btn-sm"),
+                actionButton("btn_example_paper", "Use paper settings (slower)", class = "btn-default btn-sm")
+              ),
+              br(),
+              actionButton("btn_ga", "Run allocation", class = "btn-primary"),
               hr(),
               helpText("Requires Step 2 to be completed first. May take a while for large popSize/maxiter.")
             ),
             mainPanel(
               width = 8,
-              uiOutput("feasibility_badge"),
-              fluidRow(
-                column(4, div(class = "metric-box", h5("Total variance"), div(class = "metric-value", textOutput("out_variance")))),
-                column(4, div(class = "metric-box", h5("Total cost"), div(class = "metric-value", textOutput("out_cost")))),
-                column(4, div(class = "metric-box", h5("Total n"), div(class = "metric-value", textOutput("out_n"))))
-              ),
-              h4("Allocation by stratum"),
-              DTOutput("allocation_table"),
-              h4("c_h and k_h by stratum"),
-              plotOutput("allocation_plot", height = "350px")
+              tabsetPanel(
+                id = "step3_tabs",
+                tabPanel(
+                  "Allocation",
+                  uiOutput("feasibility_badge"),
+                  fluidRow(
+                    column(4, div(class = "metric-box", h5("Total variance"), div(class = "metric-value", textOutput("out_variance")))),
+                    column(4, div(class = "metric-box", h5("Total cost"), div(class = "metric-value", textOutput("out_cost")))),
+                    column(4, div(class = "metric-box", h5("Total n"), div(class = "metric-value", textOutput("out_n"))))
+                  ),
+                  h4("Allocation by stratum"),
+                  DTOutput("allocation_table"),
+                  h4("c_h and k_h by stratum"),
+                  plotOutput("allocation_plot", height = "350px")
+                ),
+                tabPanel(
+                  "Starting Suggestion",
+                  uiOutput("start_summary"),
+                  DTOutput("start_table")
+                )
+              )
             )
           )
         )
@@ -364,7 +444,8 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   
-  rv <- reactiveValues(raw = NULL, clean = NULL, frame = NULL, alloc = NULL)
+  rv <- reactiveValues(raw = NULL, clean = NULL, frame = NULL, alloc = NULL,
+                       map = NULL, costs = NULL, start = NULL)
   
   # --- Stepper: reflects real progress, and is how you navigate back ----
   
@@ -431,15 +512,83 @@ server <- function(input, output, session) {
     rv$clean <- NULL
     rv$frame <- NULL
     rv$alloc <- NULL
+    rv$start <- NULL
+    rv$map <- NULL
+  })
+  
+  # --- Example data: ECDC 2021, with the column mapping pre-filled -----------
+  
+  observeEvent(input$btn_example, {
+    if (is.na(example_path)) {
+      showNotification(
+        paste0("Example file '", EXAMPLE_FILE, "' not found next to app.R (or in a data/ folder)."),
+        type = "error", duration = NULL
+      )
+      return(invisible(NULL))
+    }
+    dat <- tryCatch(
+      read.csv(example_path, stringsAsFactors = FALSE),
+      error = function(e) {
+        showNotification(paste("Could not read example:", conditionMessage(e)), type = "error")
+        NULL
+      }
+    )
+    req(dat)
+    # count_children_present contains codes such as '.a'; parse to numeric (NA where not a number)
+    if (EXAMPLE$y_var %in% names(dat)) {
+      raw_y <- as.character(dat[[EXAMPLE$y_var]])
+      dat[[EXAMPLE$y_var]] <- if (requireNamespace("readr", quietly = TRUE)) {
+        suppressWarnings(readr::parse_number(raw_y))
+      } else {
+        suppressWarnings(as.numeric(raw_y))
+      }
+    }
+    rv$raw <- dat
+    rv$clean <- NULL
+    rv$frame <- NULL
+    rv$alloc <- NULL
+    rv$start <- NULL
+    rv$map <- list(stratum = EXAMPLE$stratum, cluster = EXAMPLE$cluster, y_var = EXAMPLE$y_var)
+    showNotification("ECDC example loaded. Click 'Read & standardise data' to continue.", type = "message")
+    updateTabsetPanel(session, "step1_tabs", selected = "Raw Data Preview")
+  })
+  
+  observeEvent(input$btn_example_frame, {
+    updateNumericInput(session, "total_c", value = EXAMPLE$total_c)
+    updateNumericInput(session, "cost_cluster", value = EXAMPLE$cost_cluster)
+    updateNumericInput(session, "cost_unit", value = EXAMPLE$cost_unit)
+  })
+  
+  observeEvent(input$btn_example_ga, {
+    updateNumericInput(session, "total_n", value = EXAMPLE$total_n)
+    updateNumericInput(session, "max_cost", value = EXAMPLE$max_cost)
+    updateNumericInput(session, "popSize", value = EXAMPLE$popSize)
+    updateNumericInput(session, "maxiter", value = EXAMPLE$maxiter)
+    updateNumericInput(session, "run", value = EXAMPLE$run)
+    updateNumericInput(session, "seed", value = EXAMPLE$seed)
+    updateCheckboxInput(session, "use_neyman", value = TRUE)
+  })
+  
+  observeEvent(input$btn_example_paper, {
+    updateNumericInput(session, "total_n", value = EXAMPLE$total_n)
+    updateNumericInput(session, "max_cost", value = EXAMPLE$max_cost)
+    updateNumericInput(session, "popSize", value = PAPER_GA$popSize)
+    updateNumericInput(session, "maxiter", value = PAPER_GA$maxiter)
+    updateNumericInput(session, "run", value = PAPER_GA$run)
+    updateNumericInput(session, "seed", value = PAPER_GA$seed)
+    updateCheckboxInput(session, "use_neyman", value = TRUE)
   })
   
   output$column_pickers <- renderUI({
     req(rv$raw)
     cols <- names(rv$raw)
+    pick <- function(key) {
+      if (!is.null(rv$map) && rv$map[[key]] %in% cols) rv$map[[key]] else cols[1]
+    }
     tagList(
-      selectInput("stratum_id", "Stratum column", choices = cols),
-      selectInput("cluster_id", "Cluster column", choices = cols),
-      selectInput("y_var", "Analysis variable (y_var)", choices = cols)
+      selectInput("stratum_id", "Stratum column", choices = cols, selected = pick("stratum")),
+      selectInput("cluster_id", "Cluster column", choices = cols, selected = pick("cluster")),
+      selectInput("y_var", "Analysis variable (y_var)", choices = cols, selected = pick("y_var"))
     )
   })
   
@@ -509,6 +658,9 @@ server <- function(input, output, session) {
       )
       rv$frame <- result
     })
+    rv$costs <- list(cluster = input$cost_cluster, unit = input$cost_unit)
+    rv$alloc <- NULL
+    rv$start <- NULL
     
     output$frame_summary <- renderText(paste(summary_txt, collapse = "\n"))
     
@@ -535,26 +687,74 @@ server <- function(input, output, session) {
   # --- Step 3: GA allocation ----------------------------------------------
   
   observeEvent(input$btn_ga, {
-    req(rv$frame)
+    req(rv$frame, rv$costs)
     if (!is.null(missing_fn_msg)) {
       showNotification(missing_fn_msg, type = "error", duration = NULL)
       return(invisible(NULL))
     }
     
+    strata   <- rv$frame$strata
+    cc       <- rv$costs$cluster
+    cu       <- rv$costs$unit
     seed_val <- if (is.na(input$seed)) NULL else input$seed
     
-    withProgress(message = "Running GA allocation...", value = 0.3, {
+    if (cu * input$total_n >= input$max_cost) {
+      showNotification(
+        "Unit costs alone use up the whole budget. Raise max_cost or lower total_n.",
+        type = "error", duration = NULL
+      )
+      return(invisible(NULL))
+    }
+    
+    # Clusters we can both afford and actually have (same rule as the R2BEAT tiers)
+    available_c  <- sum(strata$C_h)
+    affordable_c <- floor((input$max_cost - cu * input$total_n) / cc)
+    max_c        <- min(available_c, max(1, affordable_c))
+    
+    withProgress(message = "Running allocation", value = 0, {
+      
+      # Step A: feasible Neyman starting suggestion, so the GA starts close to a solution
+      ga_suggestion <- NULL
+      rv$start <- NULL
+      if (isTRUE(input$use_neyman)) {
+        setProgress(0.1, detail = "Building feasible starting suggestion...")
+        ns <- tryCatch(
+          find_feasible_joint_start(
+            strata                      = strata,
+            total_n                     = input$total_n,
+            max_cost                    = input$max_cost,
+            max_candidate_c             = max_c,
+            default_starting_suggestion = "3. Neyman proportional",
+            require_all_starts          = FALSE
+          ),
+          error = function(e) {
+            showNotification(
+              paste0("Starting suggestion failed (", conditionMessage(e),
+                     "). The GA will build its own start instead."),
+              type = "warning", duration = 12
+            )
+            NULL
+          }
+        )
+        if (!is.null(ns)) {
+          ga_suggestion <- ns$suggestion
+          rv$start <- ns
+        }
+      }
+      
+      # Step B: the GA, seeded with that suggestion
+      setProgress(0.3, detail = "Running genetic algorithm...")
       result <- tryCatch(
         allocate_twostage_ga_joint(
-          strata   = rv$frame$strata,
-          total_n  = input$total_n,
-          max_cost = input$max_cost,
-          popSize  = input$popSize,
-          maxiter  = input$maxiter,
-          run      = input$run,
-          seed     = seed_val,
-          suggestion = NULL,
-          monitor  = FALSE
+          strata     = strata,
+          total_n    = input$total_n,
+          max_cost   = input$max_cost,
+          popSize    = input$popSize,
+          maxiter    = input$maxiter,
+          run        = input$run,
+          seed       = seed_val,
+          suggestion = ga_suggestion,
+          monitor    = FALSE
         ),
         error = function(e) {
           showNotification(paste("allocate_twostage_ga_joint() failed:", conditionMessage(e)), type = "error", duration = NULL)
@@ -562,12 +762,64 @@ server <- function(input, output, session) {
         }
       )
       rv$alloc <- result
-      incProgress(0.7)
+      setProgress(1)
     })
     
     if (!is.null(rv$alloc)) {
-      showNotification("GA allocation complete.", type = "message")
+      showNotification("Allocation complete.", type = "message")
+      updateTabsetPanel(session, "step3_tabs", selected = "Allocation")
     }
+  })
+  
+  # Live check so people know before running whether the inputs can work
+  output$feasibility_hint <- renderUI({
+    req(rv$frame, rv$costs, input$total_n, input$max_cost)
+    strata <- rv$frame$strata
+    cc <- rv$costs$cluster
+    cu <- rv$costs$unit
+    money <- scales::label_number(prefix = "R", big.mark = ",")
+    
+    unit_total <- cu * input$total_n
+    if (unit_total >= input$max_cost) {
+      return(div(class = "hint-box hint-bad", p(sprintf(
+        "Unit costs alone (%s) use up the whole budget. Raise max_cost or lower total_n.",
+        money(unit_total)
+      ))))
+    }
+    if (input$total_n > sum(strata$N_h)) {
+      return(div(class = "hint-box hint-bad", p(sprintf(
+        "total_n (%s) is larger than the %s SSUs in the frame.",
+        format(input$total_n, big.mark = ","), format(sum(strata$N_h), big.mark = ",")
+      ))))
+    }
+    affordable <- floor((input$max_cost - unit_total) / cc)
+    if (affordable < nrow(strata)) {
+      return(div(class = "hint-box hint-bad", p(sprintf(
+        "After unit costs the budget buys only %d cluster(s), fewer than the %d strata. Raise max_cost.",
+        affordable, nrow(strata)
+      ))))
+    }
+    div(class = "hint-box", p(sprintf(
+      "Looks workable: unit costs take %s, leaving room for up to %s clusters (%s available).",
+      money(unit_total), format(affordable, big.mark = ","), format(sum(strata$C_h), big.mark = ",")
+    )))
+  })
+  
+  output$start_summary <- renderUI({
+    if (is.null(rv$start)) {
+      return(helpText("No starting suggestion yet. Run the allocation with the Neyman start option ticked."))
+    }
+    ns <- rv$start
+    div(
+      class = "hint-box",
+      p(strong("Selected start: "), as.character(ns$starting_suggestion %||% "n/a")),
+      p(strong("Starting clusters: "), as.character(ns$total_c %||% "n/a"))
+    )
+  })
+  
+  output$start_table <- renderDT({
+    req(rv$start, rv$start$diagnostics)
+    datatable(rv$start$diagnostics, options = list(scrollX = TRUE, pageLength = 10))
   })
   
   output$feasibility_badge <- renderUI({
@@ -594,10 +846,48 @@ server <- function(input, output, session) {
     format(rv$alloc$total_n, big.mark = ",")
   })
   
+  # The table is the `allocation` data frame exactly as returned by
+  # allocate_twostage_ga_joint(); only the display is formatted. Any extra
+  # columns the function adds later show up automatically.
   output$allocation_table <- renderDT({
     req(rv$alloc)
-    datatable(rv$alloc$allocation, options = list(scrollX = TRUE, pageLength = 10)) |>
-      formatRound(columns = c("var_between", "var_within", "var_total"), digits = 6)
+    al <- rv$alloc$allocation
+    
+    labels <- c(
+      stratum = "Stratum", c_h = "c_h (clusters)", k_h = "k_h (units per cluster)",
+      n_h = "n_h (total units)", var_between = "Between-cluster var",
+      var_within = "Within-cluster var", var_total = "Total var"
+    )
+    header_names <- ifelse(names(al) %in% names(labels), labels[names(al)], names(al))
+    
+    is_num   <- vapply(al, is.numeric, logical(1))
+    is_whole <- vapply(al, function(x) is.numeric(x) && all(abs(x - round(x)) < 1e-9, na.rm = TRUE), logical(1))
+    var_cols   <- names(al)[is_num & grepl("^var_", names(al))]
+    count_cols <- names(al)[is_whole & !(names(al) %in% var_cols)]
+    
+    # Footer totals (sums only for additive columns; k_h is left blank)
+    foot_cell <- function(nm, i) {
+      if (i == 1) return(tags$th("Total"))
+      if (nm %in% var_cols) return(tags$th(formatC(sum(al[[nm]]), format = "f", digits = 6, big.mark = ",")))
+      if (nm %in% count_cols && nm != "k_h") return(tags$th(formatC(sum(al[[nm]]), format = "f", digits = 0, big.mark = ",")))
+      tags$th("")
+    }
+    container <- tags$table(
+      class = "display",
+      DT::tableHeader(header_names),
+      tags$tfoot(tags$tr(lapply(seq_along(al), function(i) foot_cell(names(al)[i], i))))
+    )
+    
+    dt <- datatable(
+      al,
+      container = container,
+      rownames = FALSE,
+      class = "row-border hover",
+      options = list(dom = "t", paging = FALSE, scrollX = TRUE, scrollY = "420px", scrollCollapse = TRUE)
+    )
+    if (length(count_cols) > 0) dt <- formatRound(dt, columns = count_cols, digits = 0, mark = ",")
+    if (length(var_cols) > 0)   dt <- formatRound(dt, columns = var_cols, digits = 6)
+    dt
   })
   
   output$allocation_plot <- renderPlot({

@@ -37,9 +37,6 @@
 #'       \item \code{C_h} — total clusters in stratum
 #'       \item \code{N_h} — total SSUs in stratum
 #'       \item \code{N_bar_h} — mean SSUs per cluster (\eqn{\bar{N}_h})
-#'       \item \code{max_k_h} — largest cluster size (SSU count) observed in
-#'         the stratum; used as the realistic upper bound on \eqn{k_h} in
-#'         \code{\link{allocate_twostage_ga}}
 #'       \item \code{W_h} — stratum weight (proportion of total SSUs)
 #'       \item \code{sigma2_bh} — between-cluster variance component
 #'       \item \code{sigma2_wh} — within-cluster variance component
@@ -143,8 +140,7 @@ prepare_sampling_frame <-
         C_h     <- nrow(h)                   # total clusters in stratum
         N_h     <- sum(h$N_hi)               # total SSUs in stratum
         N_bar_h <- mean(h$N_hi)              # mean cluster size
-        max_k_h <- min(h$N_hi)               # largest cluster in stratum — realistic upper bound on k_h
-        
+
         # Grand mean of stratum (SSU-weighted)
         ybar_bar_h <- sum(h$N_hi * h$ybar_hi) / N_h
         
@@ -171,7 +167,6 @@ prepare_sampling_frame <-
           C_h       = C_h,
           N_h       = N_h,
           N_bar_h   = N_bar_h,
-          max_k_h   = max_k_h,
           W_h       = NA_real_,       # filled after all strata computed
           sigma2_bh = sigma2_bh,
           sigma2_wh = sigma2_wh,
@@ -324,14 +319,13 @@ prepare_sampling_frame <-
               paste(c_h, collapse = " "), sum(c_h)))
   cat("\n  Stratum summary:\n")
   cat(sprintf("  %-20s %6s %8s %8s %8s %10s %10s\n",
-              "Stratum", "C_h", "N_h", "max_k_h", "W_h", "sigma2_bh", "sigma2_wh"))
+              "Stratum", "C_h", "N_h", "W_h", "sigma2_bh", "sigma2_wh"))
   cat("  ", strrep("-", 78), "\n", sep = "")
   for (i in seq_len(nrow(strata))) {
     cat(sprintf("  %-20s %6d %8d %8d %8.4f %10.4f %10.4f\n",
                 strata$stratum[i],
                 strata$C_h[i],
                 strata$N_h[i],
-                strata$max_k_h[i],
                 strata$W_h[i],
                 strata$sigma2_bh[i],
                 strata$sigma2_wh[i]))
