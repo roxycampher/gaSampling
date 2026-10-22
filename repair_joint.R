@@ -1,4 +1,119 @@
-repair_ckh <- function(c_h,
+#' Joint two-stage allocation repair function
+#'
+#' Adjust cluster and unit allocations to meet sampling constraints
+#'
+#' Search for an integer allocation that meets or exceeds a minimum
+#' total sample size, respects stratum allocation bounds and satisfies
+#' an optional budget range.
+#'
+#' @param c_h Numeric vector giving the initial number of primary
+#'   sampling units (clusters) sampled in each stratum.
+#' @param k_h Numeric vector giving the initial number of secondary
+#'   sampling units sampled per cluster in each stratum.
+#' @param total_n A single non-negative integer giving the minimum
+#'   required total sample size.
+#' @param lower_c Numeric vector of minimum cluster counts per stratum.
+#'   Defaults to two per stratum when NULL.
+#' @param upper_c Numeric vector of maximum cluster counts per stratum.
+#'   Defaults to Inf per stratum when NULL.
+#' @param lower_k Numeric vector of minimum numbers of sampled units
+#'   per cluster in each stratum. Defaults to one per stratum when NULL.
+#' @param upper_k Numeric vector of maximum numbers of sampled units
+#'   per cluster in each stratum. Defaults to Inf per stratum when NULL.
+#' @param max_iter Non-negative integer giving the maximum number of
+#'   unit-allocation adjustment steps for each candidate cluster
+#'   allocation. Defaults to 1000.
+#' @param k_tolerance Positive integer limiting the change in k_h
+#'   within a single adjustment step. Defaults to 5.
+#' @param c_search_radius Non-negative integer giving the maximum
+#'   change explored in an individual stratum's initial cluster count.
+#'   Also limits the number of successive cluster reductions considered
+#'   when the initial allocation exceeds max_cost. Defaults to 2.
+#' @param max_cost Positive numeric value giving the reference budget.
+#'   If NULL, budget constraints are not applied.
+#' @param cost_cluster Numeric vector of costs per sampled cluster in
+#'   each stratum, or a single value applied to all strata. Required
+#'   when max_cost is supplied.
+#' @param cost_unit Numeric vector of costs per sampled secondary unit
+#'   in each stratum, or a single value applied to all strata. Values
+#'   should be positive. Required when max_cost is supplied.
+#' @param min_budget_use Numeric proportion giving the minimum required
+#'   budget use. Defaults to 0.95, requiring at least 95 percent of
+#'   max_cost to be used. NULL is treated as zero.
+#' @param budget_tol Non-negative numeric proportion allowing spending
+#'   above max_cost. Defaults to 0.02, allowing spending up to 102
+#'   percent of max_cost. NULL is treated as zero.
+#'
+#' @return A named list containing the selected allocation and diagnostics:
+#'   \item{c_h}{Integer vector of selected cluster counts by stratum.}
+#'   \item{k_h}{Integer vector of selected unit counts per cluster
+#'     by stratum.}
+#'   \item{n_h}{Integer vector of stratum sample sizes, c_h * k_h.}
+#'   \item{total_n}{Total sample size achieved by the selected allocation.}
+#'   \item{target_total_n}{The supplied minimum sample size requirement.}
+#'   \item{total_cost}{Cost of the selected allocation, or NA when
+#'     budget constraints are not applied.}
+#'   \item{max_cost}{The supplied reference budget, or NULL.}
+#'   \item{lower_cost_bound, upper_cost_bound}{Allowed spending limits,
+#'     or NA when budget constraints are not applied.}
+#'   \item{cost_gap}{Total cost minus max_cost, or NA when budget
+#'     constraints are not applied.}
+#'   \item{cost_over}{Amount above the upper spending limit, or zero
+#'     when that limit is met or budget constraints are not applied.}
+#'   \item{budget_underuse}{Amount below the lower spending limit, or
+#'     zero when that limit is met or budget constraints are not applied.}
+#'   \item{budget_use_pct}{Percentage of max_cost used, or NA when
+#'     budget constraints are not applied.}
+#'   \item{lower_cost_ok, upper_cost_ok, cost_ok}{Logical indicators
+#'     for meeting the lower, upper, and combined budget constraints.
+#'     All are TRUE when budget constraints are not applied.}
+#'   \item{sample_size_gap}{Achieved sample size minus target_total_n.}
+#'   \item{sample_shortfall}{Amount by which the achieved sample size
+#'     falls below target_total_n, or zero if the requirement is met.}
+#'   \item{sample_size_ok}{Logical value indicating whether the minimum
+#'     sample size is met or exceeded.}
+#'   \item{repaired_exactly}{Alias for sample_size_ok. Does not indicate
+#'     exact equality with the target or satisfaction of the budget.}
+#'   \item{iterations}{Iteration index recorded for the selected result
+#'     within its unit-allocation search, rather than the total number
+#'     of iterations across all candidates.}
+#'
+#' @details
+#'   Allocation and bound vectors must have the same length, with
+#'   entries ordered consistently by stratum. Scalar cost inputs are
+#'   repeated across strata. Bounds should be positive integer-valued
+#'   counts, with each lower bound no greater than its upper bound.
+#'   Upper bounds may be Inf.
+#'
+#'   Initial allocations are rounded and restricted to their bounds.
+#'   The function then adjusts unit counts for the initial cluster
+#'   allocation and nearby candidate cluster allocations.
+#'
+#'   Candidates are compared in priority order by sample shortfall,
+#'   spending above the upper budget limit, spending below the lower
+#'   budget limit, absolute distance from max_cost and changes in
+#'   cluster and unit counts from the rounded, bounded starting values.
+#'   The search stops when an allocation satisfies both the sample
+#'   size and budget requirements.
+#'
+#'   This is a heuristic search and does not guarantee that a feasible
+#'   allocation will be found even when one exists. Check sample_size_ok
+#'   and cost_ok before using the returned allocation.
+#'   The function requires cost_twostage when max_cost is supplied.
+#'   It checks vector lengths and required cost inputs, but does not
+#'   fully validate input values or bound consistency.
+#'
+#' @examples
+#' repair_ckh(
+#'   c_h = c(10, 15),
+#'   k_h = c(4, 5),
+#'   total_n = 150,
+#'   lower_c = c(2, 2),
+#'   upper_c = c(20, 25),
+#'   lower_k = c(1, 1),
+#'   upper_k = c(10, 10)
+#' )
+repair_joint <- function(c_h,
                        k_h,
                        total_n,
                        lower_c = NULL,
@@ -11,9 +126,8 @@ repair_ckh <- function(c_h,
                        max_cost = NULL,
                        cost_cluster = NULL,
                        cost_unit = NULL,
-                       min_budget_use = 0.95, # hard coded for now
-                       budget_tol = 0.02,
-                       n_tol = 25) {
+                       min_budget_use = 0.95,
+                       budget_tol = 0.02) {
   L <- length(c_h)
   use_cost <- !is.null(max_cost)
   
@@ -65,7 +179,7 @@ repair_ckh <- function(c_h,
     }
     sample_size_gap <- achieved_total_n - total_n
     sample_shortfall <- max(0, total_n - achieved_total_n)
-    sample_size_ok <- abs(sample_size_gap) <= n_tol
+    sample_size_ok <- achieved_total_n >= total_n
     
     lower_cost_bound <- if (use_cost) max_cost * min_budget_use else NA_real_
     upper_cost_bound <- if (use_cost) max_cost * (1 + budget_tol) else NA_real_
@@ -106,7 +220,7 @@ repair_ckh <- function(c_h,
     unused_budget <- if (use_cost) abs(max_cost - result$total_cost) else 0
     
     c(
-      abs(result$sample_size_gap),
+      result$sample_shortfall,
       result$cost_over,
       result$budget_underuse,
       unused_budget,
@@ -172,7 +286,7 @@ repair_ckh <- function(c_h,
         if (length(possible) > 0L) {
           j <- possible[which.max(c_candidate[possible])]
           jump <- min(
-            if (diff > 0) floor(diff / c_candidate[j]) else Inf,
+            if (diff > 0) max(1L, floor(diff / c_candidate[j])) else Inf,
             upper_k[j] - k_candidate[j],
             budget_room[j],
             max(1L, as.integer(k_tolerance))
@@ -186,8 +300,8 @@ repair_ckh <- function(c_h,
           trial_k <- k_candidate
           trial_k[j] <- trial_k[j] + 1L
           
-          if (abs(sum(c_candidate * trial_k) - total_n) >=
-              abs(best_result$sample_size_gap)) {
+          if (max(0, total_n - sum(c_candidate * trial_k)) >=
+              best_result$sample_shortfall) {
             break
           }
           
@@ -284,9 +398,4 @@ repair_ckh <- function(c_h,
   }
   
   best
-}
-
-# wrapper alias
-repair_joint <- function(...) {
-  repair_ckh(...)
 }

@@ -1,3 +1,127 @@
+#' Joint two-stage genetic algorithm allocation function
+#'
+#' Optimise cluster and unit allocations across strata
+#'
+#' Use a genetic algorithm to jointly search for cluster counts and
+#' unit counts per cluster that minimise the variance of the overall
+#' mean, subject to allocation bounds, a minimum sample size and
+#' an optional budget range. Repair candidate allocations to obtain
+#' integer counts and attempt to satisfy the constraints.
+#'
+#' @param strata A data frame with one row per stratum containing
+#'   stratum (stratum identifier), C_h (available cluster count),
+#'   W_h (population weight), sigma2_bh (between-cluster variance),
+#'   sigma2_wh (within-cluster variance), cost_cluster (cost per
+#'   sampled cluster) and cost_unit (cost per sampled secondary unit).
+#'   Each stratum must have at least two available clusters.
+#' @param total_n A single positive integer giving the minimum required
+#'   total number of sampled secondary units.
+#' @param max_cost A single positive numeric value giving the reference
+#'   budget. Supply NULL to disable budget constraints.
+#' @param popSize Positive integer giving the genetic algorithm
+#'   population size. Defaults to 100.
+#' @param maxiter Positive integer giving the maximum number of genetic
+#'   algorithm iterations. Defaults to 1000.
+#' @param run Positive integer giving the number of consecutive
+#'   iterations without improvement in the best fitness before
+#'   stopping. Defaults to 50.
+#' @param seed Optional integer random seed passed to set.seed before
+#'   the search. Defaults to NULL, leaving the current random-number
+#'   state unchanged before the search begins.
+#' @param suggestion Optional numeric vector of length 2 * nrow(strata)
+#'   supplying one starting allocation. The first half contains cluster
+#'   counts and the second half contains unit counts per cluster,
+#'   both in the row order of strata. If NULL, a starting allocation
+#'   is constructed and repaired automatically.
+#' @param monitor Monitoring argument passed to GA::ga. Defaults to
+#'   NULL. A monitoring function can be supplied to report search
+#'   progress.
+#'
+#' @return A named list containing:
+#'   \item{feasible}{Logical value indicating whether the returned
+#'     allocation satisfies the checked constraints.}
+#'   \item{fallback_used}{Logical value indicating whether a feasible
+#'     repaired version of the supplied suggestion replaced an
+#'     infeasible repaired genetic algorithm solution.}
+#'   \item{variance}{Total variance of the overall mean for the
+#'     returned allocation.}
+#'   \item{between_variance}{Total weighted between-cluster contribution
+#'     to the variance.}
+#'   \item{within_variance}{Total weighted within-cluster contribution
+#'     to the variance.}
+#'   \item{total_n}{Achieved total sample size, which may exceed the
+#'     requested minimum.}
+#'   \item{total_cost}{Total sampling cost of the returned allocation.}
+#'   \item{allocation}{Data frame containing stratum, sampled cluster
+#'     counts c_h, sampled unit counts per cluster k_h, stratum sample
+#'     sizes n_h, and weighted variance contributions var_between,
+#'     var_within, and var_total.}
+#'   \item{constraint_check}{Diagnostic list returned by
+#'     check_constraints for the final allocation.}
+#'   \item{repair}{Repair results and diagnostics for the returned
+#'     allocation.}
+#'   \item{ga_object}{The fitted GA object returned by GA::ga.}
+#'
+#' @details
+#'   The search uses real-valued candidates, which are rounded and
+#'   repaired during fitness evaluation. Cluster counts are bounded
+#'   between 2 and strata$C_h. Unit counts per cluster are bounded
+#'   between 1 and total_n.
+#'
+#'   The upper unit bound does not represent observed cluster capacity.
+#'   The function does not check whether individual clusters contain
+#'   enough secondary units for the returned allocation.
+#'
+#'   Fitness is the negative variance for feasible repaired allocations,
+#'   with a fixed penalty for infeasible allocations. Variance is
+#'   calculated without finite population corrections.
+#'
+#'   With the current helper defaults, budget constraints require
+#'   spending between 95 and 102 percent of max_cost. These proportions
+#'   are not exposed as arguments to this function.
+#'
+#'   The first solution stored in the fitted GA object is selected
+#'   and repaired. If it remains infeasible and a suggestion was
+#'   supplied, the function attempts to use a feasible repaired version
+#'   of that suggestion instead.
+#'
+#'   The search is stochastic and does not guarantee a globally optimal
+#'   or feasible allocation. An infeasible result can still be returned.
+#'   Check feasible and constraint_check before using it. The returned
+#'   allocation may differ from the solution stored in ga_object
+#'   because of final repair or fallback.
+#'
+#'   The function requires the GA package and the helper functions
+#'   fitness_ckh_constrained, repair_joint, check_constraints,
+#'   cost_twostage and variance_twostage.
+#'   Supplying seed resets the session's random-number state and
+#'   running the search advances it. Input validation is limited.
+#'
+#' @examples
+#' strata <- data.frame(
+#'   stratum = c("A", "B"),
+#'   C_h = c(20, 25),
+#'   W_h = c(0.4, 0.6),
+#'   sigma2_bh = c(2, 3),
+#'   sigma2_wh = c(6, 9),
+#'   cost_cluster = c(100, 120),
+#'   cost_unit = c(5, 6)
+#' )
+#'
+#' result <- allocate_twostage_ga_joint(
+#'   strata = strata,
+#'   total_n = 150,
+#'   max_cost = 3900,
+#'   popSize = 50,
+#'   maxiter = 100,
+#'   run = 20,
+#'   seed = 123,
+#'   suggestion = c(10, 15, 5, 8)
+#' )
+#'
+#' result$feasible
+#' result$allocation
+#' result$constraint_check
 allocate_twostage_ga_joint <- function(strata,
                                        total_n,
                                        max_cost,
@@ -21,13 +145,13 @@ allocate_twostage_ga_joint <- function(strata,
   upper_c <- strata$C_h
   upper_k <- rep(total_n, L)
   
-  min_total_n <- sum(lower_c * lower_k)
   max_total_n <- sum(upper_c * upper_k)
   
-  if (total_n < min_total_n || total_n > max_total_n) {
+  if (total_n > max_total_n) {
     stop(
-      "total_n is outside the feasible range for the joint c_h and k_h bounds. ",
-      "Feasible range: ", min_total_n, " to ", max_total_n, "."
+      "The requested minimum sample size exceeds the maximum ",
+      "possible sample size under the allocation bounds: ",
+      max_total_n, "."
     )
   }
   
@@ -46,7 +170,7 @@ allocate_twostage_ga_joint <- function(strata,
     starting_c_h <- pmax(lower_c, pmin(upper_c, round(total_n / L / 2)))
     starting_k_h <- pmax(lower_k, round(total_n / sum(starting_c_h)))
     
-    starting <- repair_ckh(
+    starting <- repair_joint(
       c_h = starting_c_h,
       k_h = starting_k_h,
       total_n = total_n,
@@ -101,7 +225,7 @@ allocate_twostage_ga_joint <- function(strata,
   best_k_h <- round(best_x[(L + 1):(2 * L)])
   
   # repair final solution
-  repaired <- repair_ckh(
+  repaired <- repair_joint(
     c_h = best_c_h,
     k_h = best_k_h,
     total_n = total_n,
@@ -131,7 +255,7 @@ allocate_twostage_ga_joint <- function(strata,
   
   # Fallback condition
   if (!repaired_check$feasible && !is.null(suggestion)) {
-    suggestion_repaired <- repair_ckh(
+    suggestion_repaired <- repair_joint(
       c_h = suggestion[1:L],
       k_h = suggestion[(L + 1):(2 * L)],
       total_n = total_n,

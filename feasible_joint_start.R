@@ -1,10 +1,57 @@
-# =============================================================================
-# gaSampling: feasible starting allocation for the joint c_h, k_h GA
-#
-# Finds a total number of sampled clusters and repaired starting allocation
-# that satisfy the joint GA feasibility constraints.
-# =============================================================================
-
+#' Weighted cluster allocation function
+#'
+#' Allocate a fixed total number of clusters across strata
+#'
+#' Assign the minimum cluster count to each stratum, then distribute
+#' additional clusters using relative weights while respecting upper
+#' bounds. Allocate any remaining clusters using fractional remainders
+#' and weights to determine priority.
+#'
+#' @param weights Numeric vector of relative allocation weights, with
+#'   one entry per stratum. Negative and non-finite values are treated as zero.
+#' @param total_c A single non-negative integer giving the total number
+#'   of clusters to allocate across all strata.
+#' @param upper Numeric vector of finite non-negative integer upper
+#'   bounds on the number of clusters allocated to each stratum.
+#' @param lower Numeric vector of finite non-negative integer lower
+#'   bounds on the number of clusters allocated to each stratum.
+#'   Defaults to two clusters per stratum.
+#'
+#' @return An integer vector of cluster counts in the same stratum
+#'   order as weights. For valid inputs, the counts sum to total_c
+#'   and lie within the supplied lower and upper bounds.
+#'
+#' @details
+#'   The vectors weights, lower and upper must have the same length.
+#'   Each lower bound should be no greater than its upper bound.
+#'   The requested total must lie between sum(lower) and sum(upper).
+#'
+#'   The function starts at the lower bounds and calculates weighted
+#'   shares of the remaining clusters. These shares are rounded down
+#'   and capped at the available capacity in each stratum.
+#'
+#'   Remaining clusters are assigned one at a time to eligible strata,
+#'   prioritising larger fractional remainders, then larger weights.
+#'   Ties in both are resolved by stratum order. These priorities are
+#'   not recalculated after each assignment, so a stratum can receive
+#'   repeated additions until it reaches its upper bound.
+#'
+#'   If all weights are zero after invalid values are replaced, equal
+#'   weights are used. Zero-weight strata may still receive additional
+#'   clusters when needed to reach the requested total.
+#'
+#'   Bounds and total_c are converted to integers, truncating fractional
+#'   values. The function checks vector lengths and the aggregate
+#'   feasibility of total_c, but does not fully validate individual
+#'   bounds. It does not check sample size or budget constraints.
+#'
+#' @examples
+#' allocate_ch_by_weight(
+#'   weights = c(0.5, 0.3, 0.2),
+#'   total_c = 20,
+#'   upper = c(12, 10, 8),
+#'   lower = c(2, 2, 2)
+#' )
 allocate_ch_by_weight <- function(weights,
                                   total_c,
                                   upper,
@@ -146,7 +193,7 @@ find_feasible_joint_start <- function(strata,
         L
       )
 
-      repaired <- repair_ckh(
+      repaired <- repair_joint(
         c_h = initial_c_h,
         k_h = initial_k_h,
         total_n = total_n,
