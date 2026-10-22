@@ -1,0 +1,14 @@
+^LICENSE\.md$
+^dev$
+^app$
+^Final_diagnostics_ReadME$
+^writeup_alloc$
+^\.RData$
+^\.Rhistory$
+^app\.R$
+^Final_diagnostics_ReadME\.txt$
+^writeup_alloc\.txt$
+^res$
+^gaSampling\.Rproj$
+^doc$
+^Meta$

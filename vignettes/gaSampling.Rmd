@@ -1,0 +1,274 @@
+---
+title: "Optimal two-stage stratified cluster allocation with gaSampling"
+author: "Mokwenda & Campher"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Optimal two-stage stratified cluster allocation with gaSampling}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  fig.width = 6,
+  fig.height = 4
+)
+library(gaSampling)
+```
+
+<!--
+TODO checklist before building
+ [ ] Check the run finishes in a few seconds, in serial
+ [ ] devtools::build_vignettes() and R CMD check --as-cran
+-->
+
+## 1. Overview
+
+`gaSampling` finds an allocation of clusters and secondary sampling units (SSUs)
+for a two-stage stratified cluster design. It uses a genetic algorithm (GA) to
+minimise the variance of the mean estimator, subject to a minimum total sample
+size and a budget.
+
+The design has three levels:
+
+- **strata**, here the nine provinces of South Africa,
+- **clusters**, the primary sampling units, here wards,
+- **SSUs**, here early childhood development (ECD) centres.
+
+The workflow in this vignette is:
+
+1. prepare the stratum-level input from SSU-level data,
+2. construct a feasible starting allocation,
+3. run the GA to obtain the allocation,
+4. check the result.
+
+The method follows Cochran (1977, Chapter 10); the GA is built on the `GA`
+package (Scrucca, 2013).
+
+## 2. Data preparation
+
+The package includes `ecd_subset`, a small extract of the 2021 ECD census. It
+contains all ECD centres in a random sample of up to 40 wards per province, with
+at least two centres per ward. It is intended for illustration only and should
+not be used for inference about the full census. The response is the number of
+children present at each centre (`count_children_present`).
+
+```{r data}
+data("ecd_subset")
+str(ecd_subset)
+
+wards   <- tapply(ecd_subset$id_ward, ecd_subset$province,
+                  function(x) length(unique(x)))
+centres <- table(ecd_subset$province)
+data.frame(province = names(wards),
+           wards    = as.vector(wards),
+           centres  = as.vector(centres))
+```
+
+`read_survey_data()` takes a data frame with one row per SSU and the names of the
+stratum, cluster and response columns. It cleans identifiers, checks that
+clusters nest within strata, coerces the response to numeric (missing values are
+handled according to `na_action`) and warns about negative responses and
+single-SSU clusters.
+
+```{r read-data}
+survey_data <- read_survey_data(
+  data       = ecd_subset,
+  stratum_id = "province",
+  cluster_id = "id_ward",
+  y_var      = "count_children_present",
+  na_action  = "warn"
+)
+```
+
+## 3. Starting allocation
+
+Before building the stratum table we need the total number of clusters to
+consider. `frame_c()` returns the smaller of the number of available clusters
+(distinct stratum and cluster pairs in the data) and the number we can afford
+once the cost of the required number of SSUs is reserved, namely
+`floor((max_cost - unit_cost * total_n) / cluster_cost)`. It is a preliminary
+total across all strata, not an allocation.
+
+The sample-size target, budget and costs are set first. We ask for a total sample
+of 250 centres, a budget of R100,000, and costs of R1,000 per sampled ward and
+R100 per sampled centre.
+
+```{r settings}
+target_n     <- 250
+max_cost     <- 100000
+cost_cluster <- 1000
+cost_unit    <- 100
+
+total_c <- frame_c(
+  survey_data  = survey_data,
+  max_cost     = max_cost,
+  unit_cost    = cost_unit,
+  cluster_cost = cost_cluster,
+  total_n      = target_n
+)
+total_c
+```
+
+`prepare_sampling_frame()` aggregates the cleaned data to the stratum level. For
+each stratum it returns the number of clusters $C_h$, the number of SSUs $N_h$,
+the weight $W_h$, the between- and within-cluster variance components
+$\sigma^2_{bh}$ and $\sigma^2_{wh}$, and the cluster and unit costs. The stratum
+table is in `$strata`.
+
+```{r frame}
+frame <- prepare_sampling_frame(
+  data         = survey_data,
+  y_var        = "count_children_present",
+  total_c      = total_c,
+  cost_cluster = cost_cluster,
+  cost_unit    = cost_unit
+)
+strata <- frame$strata
+# The cluster and unit costs are the same in every stratum, so they are omitted here
+strata[, c("stratum", "C_h", "N_h", "W_h", "sigma2_bh", "sigma2_wh")]
+```
+
+Three helper functions support the construction of a starting allocation:
+
+- `allocate_ch_by_weight()` distributes a total number of clusters across strata
+  using relative weights (stratum size, variability or equal weights), subject to
+  lower and upper bounds.
+- `check_total_n_feasible()` checks whether fixed cluster counts and bounds on
+  units per cluster permit the minimum sample size to be met. It does not check
+  budget feasibility.
+- `find_feasible_joint_start()` tries several starting rules, repairs each
+  resulting allocation, checks feasibility and returns a starting suggestion with
+  diagnostics. It stops with an error if no feasible start is found.
+
+Here we use the Neyman-proportional starting rule.
+
+```{r start}
+start <- find_feasible_joint_start(
+  strata                      = strata,
+  total_n                     = target_n,
+  max_cost                    = max_cost,
+  max_candidate_c             = total_c,
+  default_starting_suggestion = "3. Neyman proportional",
+  require_all_starts          = FALSE
+)
+start$total_c
+start$diagnostics
+```
+
+## 4. Running the genetic algorithm
+
+`allocate_twostage_ga_joint()` searches over the cluster counts $c_h$ and the
+unit counts $k_h$ together. Candidate solutions are real-valued, then rounded and
+repaired during fitness evaluation, and the selected solution is repaired and
+checked again before it is returned. Passing `suggestion = start$suggestion`
+seeds the search with the starting allocation; if it is omitted, the GA builds
+its own simple starting point.
+
+The settings below are deliberately small so the vignette builds quickly. For
+real work use a larger population and more iterations (for example
+`popSize = 100`, `maxiter = 500`, `run = 30`).
+
+```{r ga}
+res <- allocate_twostage_ga_joint(
+  strata     = strata,
+  total_n    = target_n,
+  max_cost   = max_cost,
+  popSize    = 30,
+  maxiter    = 50,
+  run        = 15,
+  seed       = 2026,
+  suggestion = start$suggestion
+)
+res$allocation
+```
+
+The returned object contains the feasibility diagnostics, the total variance
+achieved, the between- and within-cluster variance contributions, the total
+sample size, the total cost, the allocation by stratum and the fitted GA object.
+
+The procedure is heuristic and stochastic, so it does not guarantee a globally
+optimal or even a feasible allocation. **Always inspect the diagnostics before
+using the allocation.**
+
+```{r diagnostics}
+res$feasible
+res$variance
+res$total_n
+res$total_cost
+sum(res$allocation$c_h)   # total clusters (wards)
+```
+
+## 5. Checking an allocation
+
+`check_constraints()` evaluates an allocation without modifying it. It checks that
+cluster and unit counts are integer valued and within their bounds, that the
+achieved sample size meets the minimum (`total_n` is a minimum, not an exact
+target), and, when `max_cost` is supplied, that the total cost lies between
+`max_cost * min_budget_use` and `max_cost * (1 + budget_tol)`. The defaults are
+`min_budget_use = 0.95` and `budget_tol = 0.02`, so spending must fall between
+95% and 102% of the reference budget.
+
+It returns an overall indicator `feasible` and separate indicators for the
+integer, cluster, unit, sample-size and cost checks, together with the achieved
+`total_n`, `total_cost` and the stratum sample sizes `n_h`. The bounds above are
+the ones used inside the search: at least two clusters per stratum, at most
+`C_h` clusters, and between 1 and `total_n` units per cluster.
+
+```{r check}
+check_constraints(
+  c_h            = res$allocation$c_h,
+  k_h            = res$allocation$k_h,
+  total_n        = target_n,
+  max_cost       = max_cost,
+  cost_cluster   = strata$cost_cluster,
+  cost_unit      = strata$cost_unit,
+  min_clusters   = 2,
+  min_units      = 1,
+  max_clusters   = strata$C_h,
+  max_units      = rep(target_n, nrow(strata)),
+  min_budget_use = 0.95,
+  budget_tol     = 0.02
+)
+```
+
+The two objective components can also be computed directly for any allocation:
+
+```{r var-cost}
+variance_twostage(
+  c_h = res$allocation$c_h, k_h = res$allocation$k_h,
+  W_h = strata$W_h, sigma2_bh = strata$sigma2_bh, sigma2_wh = strata$sigma2_wh
+)
+
+cost_twostage(
+  c_h = res$allocation$c_h, k_h = res$allocation$k_h,
+  cost_cluster = strata$cost_cluster, cost_unit = strata$cost_unit
+)
+```
+
+`variance_twostage()` does not apply finite population corrections and does not
+check feasibility. `cost_twostage()` returns the total in the currency units you
+supplied; budget feasibility is assessed separately by `check_constraints()`.
+
+## 6. Repair and fitness (for reference)
+
+Two functions work behind the scenes inside the GA:
+
+- `repair_joint()` adjusts a candidate so that it satisfies the minimum sample
+  size, the allocation bounds and any budget constraints. It is not guaranteed to
+  produce a feasible allocation, so its diagnostics must be examined.
+- `fitness_ckh_constrained()` scores a candidate. A feasible repaired allocation
+  scores minus its variance, and an infeasible one receives a large penalty,
+  because the GA maximises fitness.
+
+See their help pages for the full argument lists.
+
+## References
+
+Cochran, W. G. (1977). *Sampling Techniques* (3rd ed.). Wiley.
+
+Scrucca, L. (2013). GA: A package for genetic algorithms in R. *Journal of
+Statistical Software*, 53(4), 1-37.

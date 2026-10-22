@@ -18,6 +18,8 @@
 #' @examples
 #' gcd_two(a = 12, b = 18)
 #' gcd_two(a = -12, b = 0)
+#' @keywords internal
+#' @noRd
 gcd_two <- function(a, b) {
   a <- abs(a)
   b <- abs(b)
@@ -49,6 +51,8 @@ gcd_two <- function(a, b) {
 #' @examples
 #' gcd_multiple(x = c(12, 18, 24))
 #' gcd_multiple(x = c(-10, 20, 30))
+#' @keywords internal
+#' @noRd
 gcd_multiple <- function(x) {
   x <- abs(x)
   Reduce(gcd_two, x)
@@ -111,6 +115,7 @@ gcd_multiple <- function(x) {
 #'   lower = c(2, 3),
 #'   upper = c(5, 8)
 #' )
+#' @export
 check_total_n_feasible <- function(total_n, c_h,
                                    lower = NULL, upper = NULL) {
   

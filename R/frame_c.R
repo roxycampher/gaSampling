@@ -51,6 +51,7 @@
 #'   cluster_cost = 100,
 #'   total_n = 120
 #' )
+#' @export
 frame_c <- function(survey_data, max_cost, unit_cost, cluster_cost, total_n) {
   
   available_c <- nrow(unique(survey_data[c("strata", "cluster")]))

@@ -38,6 +38,7 @@
 #'   cost_cluster = c(100, 120),
 #'   cost_unit = c(5, 6)
 #' )
+#' @export
 cost_twostage <- function(c_h, k_h, cost_cluster, cost_unit) {
   sum(cost_cluster * c_h + cost_unit * c_h * k_h)
 }

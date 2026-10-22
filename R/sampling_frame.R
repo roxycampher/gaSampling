@@ -10,7 +10,7 @@
 #'
 #' Takes a dataset with one row per SSU (e.g. one row per ECD centre) and
 #' aggregates it into the stratum-level summary required by
-#' \code{\link{allocate_twostage_ga}}. Computes stratum weights, between-
+#' \code{\link{allocate_twostage_ga_joint}}. Computes stratum weights, between-
 #' and within-cluster variance components, and a suggested initial cluster
 #' allocation proportional to cluster count.
 #'
@@ -75,32 +75,29 @@
 #' @references
 #' Cochran, W. G. (1977). \emph{Sampling Techniques} (3rd ed.). Wiley.
 #'
-#' @seealso \code{\link{allocate_twostage_ga}},
-#'   \code{\link{validate_sampling_input}}
+#' @seealso \code{\link{read_survey_data}},
+#'   \code{\link{allocate_twostage_ga_joint}}
 #'
 #' @examples
-#' data("ecdc_ssu", package = "gasampling")
+#' data("ecd_subset", package = "gaSampling")
+#'
+#' clean <- read_survey_data(
+#'   data       = ecd_subset,
+#'   stratum_id = "province",
+#'   cluster_id = "id_ward",
+#'   y_var      = "count_children_present"
+#' )
 #'
 #' frame <- prepare_sampling_frame(
-#'   data       = ecdc_ssu,
-#'   stratum_id = "province",
-#'   psu_id     = "district",
-#'   y_var      = "enrolment",
-#'   total_c    = 20
+#'   data         = clean,
+#'   y_var        = "count_children_present",
+#'   total_c      = 60,
+#'   cost_cluster = 1000,
+#'   cost_unit    = 100
 #' )
 #'
 #' frame$strata   # stratum summary table
 #' frame$c_h      # suggested initial cluster allocation
-#'
-#' # Pass directly into allocate_twostage_ga()
-#' \dontrun{
-#' allocate_twostage_ga(
-#'   strata  = frame$strata,
-#'   total_n = 500,
-#'   max_cost = 10000,
-#'   c_h     = frame$c_h
-#' )
-#' }
 #'
 #' @export
 prepare_sampling_frame <- 
@@ -140,7 +137,7 @@ prepare_sampling_frame <-
         C_h     <- nrow(h)                   # total clusters in stratum
         N_h     <- sum(h$N_hi)               # total SSUs in stratum
         N_bar_h <- mean(h$N_hi)              # mean cluster size
-
+        
         # Grand mean of stratum (SSU-weighted)
         ybar_bar_h <- sum(h$N_hi * h$ybar_hi) / N_h
         
@@ -318,11 +315,11 @@ prepare_sampling_frame <-
   cat(sprintf("  Suggested c_h     : %s  (total = %d)\n",
               paste(c_h, collapse = " "), sum(c_h)))
   cat("\n  Stratum summary:\n")
-  cat(sprintf("  %-20s %6s %8s %8s %8s %10s %10s\n",
+  cat(sprintf("  %-20s %6s %8s %8s %10s %10s\n",
               "Stratum", "C_h", "N_h", "W_h", "sigma2_bh", "sigma2_wh"))
   cat("  ", strrep("-", 78), "\n", sep = "")
   for (i in seq_len(nrow(strata))) {
-    cat(sprintf("  %-20s %6d %8d %8d %8.4f %10.4f %10.4f\n",
+    cat(sprintf("  %-20s %6d %8d %8.4f %10.4f %10.4f\n",
                 strata$stratum[i],
                 strata$C_h[i],
                 strata$N_h[i],

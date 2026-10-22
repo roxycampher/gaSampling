@@ -122,6 +122,7 @@
 #' result$feasible
 #' result$allocation
 #' result$constraint_check
+#' @export
 allocate_twostage_ga_joint <- function(strata,
                                        total_n,
                                        max_cost,

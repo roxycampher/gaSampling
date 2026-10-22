@@ -91,6 +91,7 @@
 #'   max_clusters = c(20, 25),
 #'   max_units = c(10, 10)
 #' )
+#' @export
 check_constraints <- function(c_h,
                               k_h,
                               total_n = NULL,

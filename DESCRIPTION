@@ -1,0 +1,25 @@
+Package: gaSampling
+Title: Genetic Algorithm for Two-Stage Stratified Cluster Allocation
+Version: 0.1.0
+Authors@R: c(
+    person("Fhatuwani", "Mokwenda", , "fmokwen@gmail.com", role = c("aut", "cre")),
+    person(c("Roxy", "cre"), "Campher", role = "aut"),
+    person()
+  )
+Description: Finds optimal allocations of clusters and units in two-stage
+    stratified cluster sampling using a genetic algorithm. Provides
+    helpers to prepare the sampling frame, build feasible starting
+    allocations and check sample size and budget constraints.
+License: MIT + file LICENSE
+Config/roxygen2/version: 8.1.1
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Imports: 
+    GA
+Depends: 
+    R (>= 3.5)
+LazyData: true
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr

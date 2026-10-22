@@ -104,7 +104,7 @@
 #'   fully validate input values or bound consistency.
 #'
 #' @examples
-#' repair_ckh(
+#' repair_joint(
 #'   c_h = c(10, 15),
 #'   k_h = c(4, 5),
 #'   total_n = 150,
@@ -113,21 +113,22 @@
 #'   lower_k = c(1, 1),
 #'   upper_k = c(10, 10)
 #' )
+#' @export
 repair_joint <- function(c_h,
-                       k_h,
-                       total_n,
-                       lower_c = NULL,
-                       upper_c = NULL,
-                       lower_k = NULL,
-                       upper_k = NULL,
-                       max_iter = 1000,
-                       k_tolerance = 5L,
-                       c_search_radius = 2L,
-                       max_cost = NULL,
-                       cost_cluster = NULL,
-                       cost_unit = NULL,
-                       min_budget_use = 0.95,
-                       budget_tol = 0.02) {
+                         k_h,
+                         total_n,
+                         lower_c = NULL,
+                         upper_c = NULL,
+                         lower_k = NULL,
+                         upper_k = NULL,
+                         max_iter = 1000,
+                         k_tolerance = 5L,
+                         c_search_radius = 2L,
+                         max_cost = NULL,
+                         cost_cluster = NULL,
+                         cost_unit = NULL,
+                         min_budget_use = 0.95,
+                         budget_tol = 0.02) {
   L <- length(c_h)
   use_cost <- !is.null(max_cost)
   

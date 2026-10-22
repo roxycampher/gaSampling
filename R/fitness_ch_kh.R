@@ -78,6 +78,7 @@
 #'   max_cost = 3900,
 #'   max_k_h = c(10, 10)
 #' )
+#' @export
 
 fitness_ckh_constrained <- function(x,
                                     strata,

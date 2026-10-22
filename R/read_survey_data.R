@@ -70,19 +70,16 @@
 #' @seealso \code{\link{prepare_sampling_frame}}
 #'
 #' @examples
-#' data("ecdc_ssu", package = "gasampling")
+#' data("ecd_subset", package = "gaSampling")
 #'
 #' clean <- read_survey_data(
-#'   data       = ecdc_ssu,
+#'   data       = ecd_subset,
 #'   stratum_id = "province",
-#'   cluster_id = "district",
-#'   y_var      = "enrolment"
+#'   cluster_id = "id_ward",
+#'   y_var      = "count_children_present"
 #' )
 #'
 #' head(clean)
-#' # strata        cluster    enrolment
-#' # Western Cape  West Coast        32
-#' # ...
 #'
 #' @export
 read_survey_data <- function(data,
@@ -145,7 +142,7 @@ read_survey_data <- function(data,
       call. = FALSE
     )
   }
-    # --- 6. Coerce y_var to numeric --------------------------------------------
+  # --- 6. Coerce y_var to numeric --------------------------------------------
   y_original <- out[[y_var]]
   y_numeric  <- suppressWarnings(as.numeric(as.character(out[[y_var]])))
   
