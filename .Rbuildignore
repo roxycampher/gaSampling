@@ -12,3 +12,5 @@
 ^gaSampling\.Rproj$
 ^doc$
 ^Meta$
+^manifest\.json$
+^rsconnect$
