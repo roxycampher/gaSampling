@@ -5,8 +5,8 @@ library(ggplot2)
 # ------------------------------------------------------------
 # Folders and appearance
 # ------------------------------------------------------------
-input_dir <- "C:/Users/roxyc/OneDrive - University of Cape Town/Documents/UCT/2026/Project/gaSampling/hyperparameter_sensitivity_results"
-output_dir <- "C:/Users/roxyc/OneDrive - University of Cape Town/Documents/UCT/2026/Project/gaSampling/hyperparameter_faceted_plots3"
+input_dir <- experiment_dir
+output_dir <- file.path(input_dir, "faceted_plots")
 plot_dpi <- 200
 
 # ------------------------------------------------------------

@@ -1,5 +1,3 @@
-rm(list = ls())
-
 library(dplyr)
 library(readr)
 library(GA)
@@ -10,7 +8,6 @@ library(parallel)
 # ------------------------------------------------------------
 # Hyperparameter settings
 # ------------------------------------------------------------
-# Change the settings here before running the sections below.
 
 joint_ga_pop_size <- 200
 joint_ga_maxiter <- 500
@@ -25,18 +22,18 @@ stopping_patience <- c(25, 50, 100)
 include_interactions <- FALSE # Only change one hyperparamter at a time
 validation_configuration <- NULL # e.g. "p400_i500_r50", after inspecting results
 quick_check <- FALSE # When set to TRUE runs a small check
-output_dir <- "hyperparameter_sensitivity_results"
+output_dir <- "res/hyperparameter_sensitivity_results"
 
-source("variance_twostage.R")
-source("cost_twostage.R")
-source("check_constraints.R")
-source("repair_joint.R")
-source("fitness_ch_kh.R")
-source("feasible_joint_start.R")
-source("allocate_twostage_joint.R")
-source("read_survey_data.R")
-source("sampling_frame.R")
-source("frame_c.R")
+source("R/variance_twostage.R")
+source("R/cost_twostage.R")
+source("R/check_constraints.R")
+source("R/repair_joint.R")
+source("R/fitness_ch_kh.R")
+source("R/feasible_joint_start.R")
+source("R/allocate_twostage_joint.R")
+source("R/read_survey_data.R")
+source("R/sampling_frame.R")
+source("R/frame_c.R")
 
 # These lists identify the code and package versions for saved checkpoints.
 required_packages <- c("GA", "dplyr", "readr", "ggplot2", "tidyr")
@@ -45,6 +42,8 @@ helper_files <- c("variance_twostage.R", "cost_twostage.R", "check_constraints.R
                   "repair_joint.R", "fitness_ch_kh.R", "feasible_joint_start.R",
                   "allocate_twostage_joint.R", "read_survey_data.R",
                   "sampling_frame.R", "frame_c.R")
+
+helper_files <- file.path("R", helper_files)
 
 stopifnot(length(joint_ga_seed_count) == 1L, is.finite(joint_ga_seed_count),
           joint_ga_seed_count >= 1,
@@ -61,7 +60,7 @@ max_cost <- 1400000
 unit_cost <- 100
 cluster_cost <- 2500
 
-raw_data <- read.csv("ecdc-2021-public-v2.csv")
+raw_data <- read.csv("inst/extdata/ecd_subset.csv")
 raw_data$count_children_present <- readr::parse_number(raw_data$count_children_present)
 survey_data <- read_survey_data(raw_data, stratum_id = "province",
                                 cluster_id = "id_ward", y_var = "count_children_present",
@@ -163,7 +162,7 @@ manifest <- list(strata = strata, total_n = total_n, max_cost = max_cost,
                  starts = starts, R = R.version.string,
                  packages = lapply(required_packages, function(p) as.character(packageVersion(p))),
                  helpers = tools::md5sum(helper_files),
-                 script = tools::md5sum("hyperparameter_sensitivity.R"))
+                 script = tools::md5sum("res/sensitivity/hyperparameter_sensitivity.R"))
 
 manifest_tmp <- tempfile(tmpdir = output_dir, fileext = ".rds")
 saveRDS(manifest, manifest_tmp, version = 2)
@@ -353,131 +352,257 @@ paired
 ################################################################################
 #                    DIAGNOSTIC PLOTS
 ################################################################################
+if (!quick_check) {
+plot_dir <- file.path(experiment_dir, "faceted_plots")
+dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
+plot_dpi <- 200
 
-variance_plot <- ggplot2::ggplot(
-  filter(run_summary, feasible), ggplot2::aes(config_id, variance)) +
-  ggplot2::geom_boxplot() + ggplot2::facet_wrap(~phase, scales = "free_x") +
-  ggplot2::coord_flip() + ggplot2::theme_bw() +
-  ggplot2::labs(x = "Configuration", y = "Variance (feasible runs only)")
+###############################################################################
+configuration_key <- run_summary |>
+  distinct(config_id, popSize, maxiter, run)
+if (anyDuplicated(configuration_key$config_id)) stop("Inconsistent configuration IDs")
+population_levels <- sort(unique(configuration_key$popSize))
+patience_levels <- sort(unique(configuration_key$run))
+iteration_levels <- sort(unique(configuration_key$maxiter))
+iteration_colours <- c("250" = "#4477AA", "500" = "#EE6677", "1000" = "#228833")
+if (!all(as.character(iteration_levels) %in% names(iteration_colours))) {
+  iteration_colours <- setNames(grDevices::hcl.colors(length(iteration_levels), "Dark 3"),
+                                as.character(iteration_levels))
+}
+# Join settings by ID so all CSVs can use the same factors.
+add_settings <- function(data) {
+  if (any(!data$config_id %in% configuration_key$config_id)) stop("Unknown configuration ID")
+  data |>
+    select(-any_of(c("popSize", "maxiter", "run"))) |>
+    left_join(configuration_key, by = "config_id") |>
+    mutate(population = factor(popSize, levels = population_levels),
+           patience = factor(run, levels = patience_levels),
+           iteration_limit = factor(maxiter, levels = iteration_levels))
+}
+run_summary <- add_settings(run_summary)
+configuration_summary <- add_settings(configuration_summary)
+paired <- add_settings(paired)
+allocation_results <- add_settings(allocation_results)
 
+plot_theme <- theme_bw(base_size = 11) +
+  theme(panel.grid.minor = element_blank(), legend.position = "bottom",
+        strip.background = element_rect(fill = "#EDF2F7"),
+        strip.text = element_text(face = "bold"))
+colour_scales <- function() list(
+  scale_fill_manual(values = iteration_colours, drop = FALSE, name = "Maximum generations"),
+  scale_colour_manual(values = iteration_colours, drop = FALSE, name = "Maximum generations"),
+  scale_x_discrete(drop = FALSE)
+)
+# Keep a common vertical scale. Separate phases and starting strategies when present.
+population_facets <- function(data) {
+  variables <- c(if (length(unique(data$phase)) > 1) "phase",
+                 if ("starting_suggestion" %in% names(data) &&
+                     length(unique(data$starting_suggestion)) > 1) "starting_suggestion",
+                 "population")
+  facet_wrap(as.formula(paste("~", paste(variables, collapse = "+"))),
+             labeller = label_both, ncol = 2)
+}
+# Explicit groups ensure limits and boxplots align under dodging.
+boxplot_by_population <- function(data, variable, title, y_label) {
+  ggplot(data, aes(patience, .data[[variable]], fill = iteration_limit,
+                   colour = iteration_limit, group = interaction(patience, iteration_limit))) +
+    geom_boxplot(position = position_dodge(0.8), width = 0.65, alpha = 0.4,
+                 na.rm = TRUE) +
+    colour_scales() + population_facets(data) + plot_theme +
+    labs(title = title, x = "Stopping patience", y = y_label,
+         caption = "Absent groups represent untested combinations.")
+}
+
+# ------------------------------------------------------------
+# Variance, paired changes, runtime and generations
+# ------------------------------------------------------------
+variance_plot <- boxplot_by_population(filter(run_summary, feasible, popSize != 50), "variance",
+                                       "Variance by population size.", "Final variance (feasible runs)")
+variance_p50_plot <- boxplot_by_population(filter(run_summary, feasible, popSize == 50), "variance",
+                                           "Variance: population size 50.", "Final variance (feasible runs)")
+# Split the saved comparisons without changing their original baseline.
+make_paired_plot <- function(data) {
+  boxplot_by_population(data, "variance_change_pct",
+                        "Paired comparison with baseline.", "Variance change from baseline (%)") +
+    geom_hline(yintercept = 0, linetype = "dashed", colour = "grey45") +
+    labs(subtitle = "Negative values favour the configuration; feasible pairs only")
+}
+paired_variance_plot <- make_paired_plot(filter(paired, popSize != 50))
+paired_variance_p50_plot <- make_paired_plot(filter(paired, popSize == 50))
+# One point per feasible run; run is the stopping-patience limit.
+runtime_data <- run_summary |>
+  filter(is.na(error), feasible, is.finite(variance), is.finite(elapsed_seconds)) |>
+  mutate(runtime_hours = elapsed_seconds / 3600)
+patience_colours <- c("25" = "#4477AA", "50" = "#EE6677", "100" = "#228833")
+if (!all(as.character(patience_levels) %in% names(patience_colours))) {
+  patience_colours <- setNames(grDevices::hcl.colors(length(patience_levels), "Dark 3"),
+                               as.character(patience_levels))
+}
+runtime_scatter <- function(data) {
+  ggplot(data, aes(
+    runtime_hours, variance,
+    colour = patience,
+    shape = factor(maxiter)
+  )) +
+    geom_point(size = 2, alpha = 0.55) +
+    scale_colour_manual(
+      values = patience_colours, drop = FALSE,
+      name = "Stopping patience (run)"
+    ) +
+    scale_shape_manual(
+      values = c("250" = 16, "500" = 17, "1000" = 15),
+      name = "Maximum generations"
+    ) +
+    population_facets(data) + plot_theme +
+    labs(
+      title = "Runtime versus final variance by population size.",
+      subtitle = "Each point represents one feasible GA run.",
+      x = "Runtime (hours)",
+      y = "Final variance",
+      caption = paste(
+        "Shapes indicate maximum generation limits;",
+        "overlapping runs may coincide."
+      )
+    )
+}
+runtime_plot <- runtime_scatter(filter(runtime_data, popSize != 50))
+runtime_p50_plot <- runtime_scatter(filter(runtime_data, popSize == 50))
+
+make_generation_plot <- function(data) {
+  boxplot_by_population(data, "generations", "Generations used.", "Actual generations") +
+    geom_point(aes(y = maxiter), position = position_dodge(0.8),
+               shape = 4, size = 2, na.rm = TRUE) +
+    labs(subtitle = "Crosses mark the maximum allowed generations.")
+}
+generation_plot <- make_generation_plot(filter(run_summary, popSize != 50))
+generation_p50_plot <- make_generation_plot(filter(run_summary, popSize == 50))
+generation_p50_plot
 variance_plot
-
-feasibility_plot <- ggplot2::ggplot(configuration_summary,
-                                    ggplot2::aes(config_id, feasibility_rate)) + ggplot2::geom_col() +
-  ggplot2::facet_wrap(~phase, scales = "free_x") + ggplot2::coord_flip() +
-  ggplot2::ylim(0, 1) + ggplot2::theme_bw()
-
-feasibility_plot
-
-runtime_plot <- ggplot2::ggplot(configuration_summary,
-                                ggplot2::aes(median_seconds, median_variance, label = config_id)) +
-  ggplot2::geom_point() + ggplot2::geom_text(vjust = -0.7, size = 3, check_overlap = TRUE) +
-  ggplot2::facet_wrap(~phase) + ggplot2::theme_bw() +
-  ggplot2::labs(x = "Median runtime (seconds)", y = "Median feasible variance")
-
-runtime_plot
-
-# Paired comparisons use the same seed and start as the baseline.
-# Negative values mean lower variance than baseline, zero means no change.
-paired_variance_plot <- ggplot2::ggplot(
-  paired, ggplot2::aes(config_id, variance_change_pct)) +
-  ggplot2::geom_hline(yintercept = 0, linetype = "dashed", colour = "grey50") +
-  ggplot2::geom_boxplot(na.rm = TRUE) +
-  ggplot2::geom_point(size = 1, alpha = 0.5, na.rm = TRUE) +
-  ggplot2::facet_wrap(~starting_suggestion, scales = "free_x") +
-  ggplot2::coord_flip() + ggplot2::theme_bw() +
-  ggplot2::labs(x = "Configuration", y = "Variance change from baseline (%)")
-
 paired_variance_plot
-
-# Fallback means the GA returned the starting allocation after its own
-# repaired solution failed the feasibility check. Failed runs are excluded.
-fallback_plot <- ggplot2::ggplot(configuration_summary,
-                                 ggplot2::aes(config_id, fallback_rate)) +
-  ggplot2::geom_col(na.rm = TRUE) +
-  ggplot2::facet_wrap(~phase, scales = "free_x") +
-  ggplot2::coord_flip() + ggplot2::ylim(0, 1) + ggplot2::theme_bw() +
-  ggplot2::labs(x = "Configuration", y = "Fallback proportion")
-
-fallback_plot
-
-# Include completed infeasible runs too (they still used computation)
-# Red crosses mark the maximum generations allowed for each configuration.
-generation_plot <- ggplot2::ggplot(run_summary,
-                                   ggplot2::aes(config_id, generations)) +
-  ggplot2::geom_boxplot(na.rm = TRUE) +
-  ggplot2::geom_point(size = 1, alpha = 0.5, na.rm = TRUE) +
-  ggplot2::geom_point(data = configuration_summary,
-                      ggplot2::aes(y = maxiter), colour = "firebrick", shape = 4, size = 3) +
-  ggplot2::facet_wrap(~phase, scales = "free_x") +
-  ggplot2::coord_flip() + ggplot2::theme_bw() +
-  ggplot2::labs(x = "Configuration", y = "Actual generations")
-
+runtime_plot
+variance_p50_plot
+paired_variance_p50_plot
+runtime_p50_plot
 generation_plot
 
-# Allocation stability across seeds, separately for each stratum and start.
-# Keep all rows for facet labels, but omit infeasible values from the boxes.
+# ------------------------------------------------------------
+# Feasibility and fallback remain rate plots
+# ------------------------------------------------------------
+rate_plot <- function(column, title) {
+  data <- configuration_summary |>
+    mutate(rate = .data[[column]],
+           rate_label = ifelse(is.na(rate), "NA", sprintf("%.0f%%", 100 * rate)),
+           label_position = ifelse(is.na(rate), 0, rate))
+  # Retain a slot for missing rates without treating them as observed zeros.
+  ggplot(data, aes(patience, label_position, fill = iteration_limit,
+                   colour = iteration_limit, group = interaction(patience, iteration_limit))) +
+    geom_col(position = position_dodge(0.8), width = 0.65, alpha = 0.7) +
+    geom_point(aes(alpha = !is.na(rate)), position = position_dodge(0.8), size = 2) +
+    scale_alpha_manual(values = c("FALSE" = 0, "TRUE" = 1), guide = "none") +
+    geom_text(aes(label = rate_label), position = position_dodge(0.8),
+              vjust = -0.5, size = 3, colour = "grey20") +
+    scale_y_continuous(limits = c(0, 1.12), breaks = seq(0, 1, 0.25),
+                       labels = function(x) paste0(100 * x, "%")) +
+    colour_scales() + population_facets(data) + plot_theme +
+    labs(title = title, x = "Stopping patience", y = "Proportion of runs",
+         caption = "NA means unrecorded, not zero. Absent groups were not tested.")
+}
+feasibility_plot <- rate_plot("feasibility_rate", "Feasibility by population size")
+fallback_plot <- rate_plot("fallback_rate", "Fallback by population size")
+feasibility_plot
+fallback_plot
+
+# ------------------------------------------------------------
+# Allocation figures: one population per figure, faceted by stratum
+# ------------------------------------------------------------
 allocation_plot_data <- allocation_results |>
   mutate(across(c(c_h, k_h, n_h), ~ifelse(feasible, .x, NA_real_)))
-
-ch_stability_plot <- ggplot2::ggplot(allocation_plot_data,
-                                     ggplot2::aes(config_id, c_h)) +
-  ggplot2::geom_boxplot(na.rm = TRUE) +
-  ggplot2::geom_point(size = 1, alpha = 0.4, na.rm = TRUE) +
-  ggplot2::facet_wrap(~starting_suggestion + stratum, scales = "free_y", ncol = 3) +
-  ggplot2::theme_bw() +
-  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 60, hjust = 1)) +
-  ggplot2::labs(x = "Configuration", y = "Sampled clusters (c_h)")
-
-ch_stability_plot
-
-kh_stability_plot <- ggplot2::ggplot(allocation_plot_data,
-                                     ggplot2::aes(config_id, k_h)) +
-  ggplot2::geom_boxplot(na.rm = TRUE) +
-  ggplot2::geom_point(size = 1, alpha = 0.4, na.rm = TRUE) +
-  ggplot2::facet_wrap(~starting_suggestion + stratum, scales = "free_y", ncol = 3) +
-  ggplot2::theme_bw() +
-  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 60, hjust = 1)) +
-  ggplot2::labs(x = "Configuration", y = "Units per sampled cluster (k_h)")
-
-kh_stability_plot
-
-nh_stability_plot <- ggplot2::ggplot(allocation_plot_data,
-                                     ggplot2::aes(config_id, n_h)) +
-  ggplot2::geom_boxplot(na.rm = TRUE) +
-  ggplot2::geom_point(size = 1, alpha = 0.4, na.rm = TRUE) +
-  ggplot2::facet_wrap(~starting_suggestion + stratum, scales = "free_y", ncol = 3) +
-  ggplot2::theme_bw() +
-  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 60, hjust = 1)) +
-  ggplot2::labs(x = "Configuration", y = "Sampled units (n_h = c_h * k_h)")
-
-nh_stability_plot
+allocation_plot <- function(data, variable, y_label, population_size) {
+  variables <- c(if (length(unique(data$phase)) > 1) "phase",
+                 if (length(unique(data$starting_suggestion)) > 1) "starting_suggestion",
+                 "stratum")
+  ggplot(data, aes(patience, .data[[variable]], fill = iteration_limit,
+                   colour = iteration_limit, group = interaction(patience, iteration_limit))) +
+    geom_boxplot(position = position_dodge(0.8), width = 0.65, alpha = 0.4, na.rm = TRUE) +
+    facet_wrap(as.formula(paste("~", paste(variables, collapse = "+"))),
+               scales = "free_y", ncol = 3) +
+    colour_scales() + plot_theme +
+    labs(title = paste(y_label, "- population", population_size),
+         x = "Stopping patience", y = y_label,
+         subtitle = "Feasible runs only; each stratum panel has its own vertical scale.")
+}
 
 # ------------------------------------------------------------
-# Save plots and session details
+# Gauteng: compare population sizes on the same vertical scale
 # ------------------------------------------------------------
-ggsave(file.path(experiment_dir, "variance_boxplots.png"),
-       plot = variance_plot, width = 10, height = 6, dpi = 160)
-ggsave(file.path(experiment_dir, "feasibility_rates.png"),
-       plot = feasibility_plot, width = 10, height = 6, dpi = 160)
-ggsave(file.path(experiment_dir, "runtime_vs_variance.png"),
-       plot = runtime_plot, width = 10, height = 6, dpi = 160)
-ggsave(file.path(experiment_dir, "paired_variance_change.png"),
-       plot = paired_variance_plot, width = 12, height = 8, dpi = 160)
-ggsave(file.path(experiment_dir, "fallback_rates.png"),
-       plot = fallback_plot, width = 10, height = 6, dpi = 160)
-ggsave(file.path(experiment_dir, "generation_boxplots.png"),
-       plot = generation_plot, width = 10, height = 6, dpi = 160)
-allocation_panel_count <- allocation_plot_data |>
-  distinct(phase, starting_suggestion, stratum) |>
-  nrow()
-allocation_plot_height <- max(9, 3 * ceiling(allocation_panel_count / 3))
-ggsave(file.path(experiment_dir, "ch_stability.png"),
-       plot = ch_stability_plot, width = 14, height = allocation_plot_height, dpi = 160)
-ggsave(file.path(experiment_dir, "kh_stability.png"),
-       plot = kh_stability_plot, width = 14, height = allocation_plot_height, dpi = 160)
-ggsave(file.path(experiment_dir, "nh_stability.png"),
-       plot = nh_stability_plot, width = 14, height = allocation_plot_height, dpi = 160)
+gauteng_plot_data <- filter(allocation_plot_data, stratum == "Gauteng")
+if (nrow(gauteng_plot_data) == 0) stop("No Gauteng allocations found in allocations.csv")
+
+gauteng_ch_plot <- boxplot_by_population(
+  gauteng_plot_data, "c_h", "Gauteng: Cluster allocation stability.",
+  "Sampled clusters (c_h)") +
+  labs(subtitle = "Feasible runs only; population panels share the same vertical scale")
+gauteng_kh_plot <- boxplot_by_population(
+  gauteng_plot_data, "k_h", "Gauteng: Within-cluster allocation stability.",
+  "Units per sampled cluster (k_h)") +
+  labs(subtitle = "Feasible runs only; population panels share the same vertical scale")
+gauteng_nh_plot <- boxplot_by_population(
+  gauteng_plot_data, "n_h", "Gauteng: Sample-size stability.",
+  "Sampled units (n_h = c_h * k_h)") +
+  labs(subtitle = "Feasible runs only; population panels share the same vertical scale")
+
+gauteng_ch_plot
+gauteng_kh_plot
+gauteng_nh_plot
+
+# ------------------------------------------------------------
+# Save PNG and PDF figures, without rerunning any GA experiments
+# ------------------------------------------------------------
+save_plot <- function(plot, name, width = 12, height = 8) {
+  for (extension in c("png", "pdf")) {
+    ggsave(file.path(plot_dir, paste0(name, ".", extension)), plot = plot,
+           width = width, height = height, dpi = plot_dpi, bg = "white", limitsize = FALSE)
+  }
+}
+plots <- list(variance_boxplots = variance_plot, paired_variance_change = paired_variance_plot,
+              runtime_vs_variance = runtime_plot, generation_boxplots = generation_plot,
+              feasibility_rates = feasibility_plot, fallback_rates = fallback_plot,
+              gauteng_ch_stability = gauteng_ch_plot,
+              gauteng_kh_stability = gauteng_kh_plot,
+              gauteng_nh_stability = gauteng_nh_plot)
+for (name in names(plots)) save_plot(plots[[name]], name)
+save_plot(variance_p50_plot, "variance_boxplots_p50", width = 7, height = 5)
+save_plot(paired_variance_p50_plot, "paired_variance_change_p50", width = 7, height = 5)
+save_plot(runtime_p50_plot, "runtime_vs_variance_p50", width = 7, height = 5)
+save_plot(generation_p50_plot, "generation_boxplots_p50", width = 7, height = 5)
+allocation_plots <- list()
+for (population_size in population_levels) {
+  population_data <- filter(allocation_plot_data, popSize == population_size)
+  panel_count <- nrow(distinct(population_data, phase, starting_suggestion, stratum))
+  ch_stability_plot <- allocation_plot(population_data, "c_h", "Sampled clusters (c_h)", population_size)
+  kh_stability_plot <- allocation_plot(population_data, "k_h", "Units per cluster (k_h)", population_size)
+  nh_stability_plot <- allocation_plot(population_data, "n_h", "Sampled units (n_h)", population_size)
+  population_plots <- list(ch_stability = ch_stability_plot,
+                           kh_stability = kh_stability_plot, nh_stability = nh_stability_plot)
+  for (name in names(population_plots)) {
+    filename <- paste0(name, "_p", population_size)
+    allocation_plots[[filename]] <- population_plots[[name]]
+    save_plot(population_plots[[name]], filename, width = 14,
+              height = max(9, 3 * ceiling(panel_count / 3)))
+  }
+}
+write.csv(data.frame(maxiter = names(iteration_colours), colour = unname(iteration_colours)),
+          file.path(plot_dir, "iteration_colours.csv"), row.names = FALSE)
+
+message("Faceted plots saved to: ", normalizePath(plot_dir))
+
+} else {
+  message("Skipping faceted plots for the quick check.")
+}
+
+##############################################################################################
+
+
 capture.output(sessionInfo(), file = file.path(experiment_dir, "session_info.txt"))
 print(configuration_summary)
 message("Results saved to: ", normalizePath(experiment_dir))
