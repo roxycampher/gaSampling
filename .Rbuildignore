@@ -14,3 +14,4 @@
 ^Meta$
 ^manifest\.json$
 ^rsconnect$
+^\.Rproj\.user$

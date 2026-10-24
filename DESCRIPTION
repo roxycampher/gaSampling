@@ -3,7 +3,7 @@ Title: Genetic Algorithm for Two-Stage Stratified Cluster Allocation
 Version: 0.1.0
 Authors@R: c(
     person("Fhatuwani", "Mokwenda", , "fmokwen@gmail.com", role = c("aut", "cre")),
-    person(c("Roxy", "cre"), "Campher", role = "aut"),
+    person("Roxy", "Campher", role = "aut"),
     person()
   )
 Description: Finds optimal allocations of clusters and units in two-stage
