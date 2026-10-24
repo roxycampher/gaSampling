@@ -3,8 +3,8 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 
-input_dir <- 'joint_ga_stability_plots'
-output_dir <- 'joint_ga_stability_plots/reformatted'
+input_dir <- "res/stability_results"
+output_dir <- file.path(input_dir, "reformatted")
 plot_dpi <- 200
 
 read_results <- function(name) {

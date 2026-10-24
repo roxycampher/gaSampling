@@ -1,5 +1,3 @@
-rm(list = ls())
-
 library(dplyr)
 library(readr)
 library(GA)
@@ -13,19 +11,19 @@ joint_ga_seed_count <- 1 # The number of multiple runs - increase to at least 25
 # Because there are 4 c_h starting solutions, there will be 4 * joint_ga_seed_count runs of the GA
 joint_ga_max_candidate_c <- 1000
 
-source("variance_twostage.R")
-source("cost_twostage.R")
-source("check_constraints.R")
-source("repair_joint.R")
-source("fitness_ch_kh.R")
-source("feasible_joint_start.R")
-source("allocate_twostage_joint.R")
-source("read_survey_data.R")
-source("sampling_frame.R")
-source("frame_c.R")
+source("R/variance_twostage.R")
+source("R/cost_twostage.R")
+source("R/check_constraints.R")
+source("R/repair_joint.R")
+source("R/fitness_ch_kh.R")
+source("R/feasible_joint_start.R")
+source("R/allocate_twostage_joint.R")
+source("R/read_survey_data.R")
+source("R/sampling_frame.R")
+source("R/frame_c.R")
 
 # Read toy data
-toy_data <- read.csv("ecdc-2021-public-v2.csv")
+toy_data <- read.csv("inst/extdata/ecd_subset.csv")
 
 # Convert outcome variable to numeric
 toy_data$count_children_present <- readr::parse_number(
@@ -554,7 +552,7 @@ allocation_summary <- allocations |>
 #                         STABILITY PLOTS
 ################################################################################
 
-stability_output_dir <- "joint_ga_stability_plots"
+stability_output_dir <- "res/joint_ga_stability_plots"
 dir.create(
   stability_output_dir,
   showWarnings = FALSE,
