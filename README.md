@@ -12,7 +12,7 @@ The project is under development and currently runs by sourcing R scripts.
 ## Shiny app
 
 Try the allocation workflow in your browser with the
-[gaSampling app]((https://fhatuuu-roxy-gasampling.share.connect.posit.cloud/)). It loads a small example dataset, so you can
+[gaSampling app](https://fhatuuu-roxy-gasampling.share.connect.posit.cloud/). It loads a small example dataset, so you can
 run the whole workflow without uploading anything.
 
 ## Overview
