@@ -206,11 +206,6 @@ when reporting an analysis.
 The procedure returns allocation counts, it does not select the actual
 clusters or units.
 
-## Planned vignettes
+## Vignettes
 
-The following guides are planned:
-
-- Preparing survey data and building stratum summaries.
-- Running and interpreting a joint two-stage allocation.
-- Diagnosing infeasible allocations and budget constraints.
-- Assessing stability across starting values and random seeds.
+To see a complete vignette (a guided example to using the package): see the file 
