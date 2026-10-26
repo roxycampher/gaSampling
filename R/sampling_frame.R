@@ -136,8 +136,7 @@ prepare_sampling_frame <-
         
         C_h     <- nrow(h)                   # total clusters in stratum
         N_h     <- sum(h$N_hi)               # total SSUs in stratum
-        N_bar_h <- mean(h$N_hi)              # mean cluster size
-        
+
         # Grand mean of stratum (SSU-weighted)
         ybar_bar_h <- sum(h$N_hi * h$ybar_hi) / N_h
         
@@ -163,7 +162,6 @@ prepare_sampling_frame <-
           stratum   = h$stratum[1],
           C_h       = C_h,
           N_h       = N_h,
-          N_bar_h   = N_bar_h,
           W_h       = NA_real_,       # filled after all strata computed
           sigma2_bh = sigma2_bh,
           sigma2_wh = sigma2_wh,
