@@ -248,4 +248,6 @@ The procedure returns allocation counts, it does not select the actual
 clusters or units.
 
 ## Vignettes
- For a complete walkthrough of the workflow, see the [gaSampling vignette (PDF)](https://github.com/roxycampher/gaSampling/blob/main/vignettes/gaSampling.pdf)
+
+For a complete walkthrough of the workflow, see the
+[gaSampling vignette (PDF)](vignettes/Vignette.pdf).
