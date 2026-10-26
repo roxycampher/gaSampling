@@ -4,10 +4,8 @@ Genetic algorithm allocation for stratified two-stage cluster sampling in R.
 
 gaSampling searches for the number of clusters to sample in each stratum
 and the number of units to sample within each selected cluster. The aim is
-to minimise the variance of the overall mean while satisfying sample-size,
-allocation and budget constraints.
-
-The project is under development and currently runs by sourcing R scripts.
+to minimise an approximate variance objective for allocation planning while 
+satisfying sample-size, allocation and budget constraints.
 
 ## Shiny app
 
@@ -32,24 +30,57 @@ The project provides functions to prepare stratum summaries, construct
 starting allocations, repair candidate allocations, run the genetic
 algorithm and check the resulting constraints.
 
-## Setup
+## Installation
 
-Install the GA package if it is not already available:
-
-```r
-install.packages("GA")
-```
-
-From the project directory, load the functions needed for the example:
+Run the following commands in R to download and install the
+current GitHub version of gaSampling:
 
 ```r
-source("variance_twostage.R")
-source("cost_twostage.R")
-source("repair_joint.R")
-source("check_constraints.R")
-source("fitness_ch_kh.R")
-source("allocate_twostage_joint.R")
+if (!requireNamespace("remotes", quietly = TRUE)) {
+  install.packages("remotes")
+}
+
+options(timeout = 300)
+
+package_archive <- file.path(tempdir(), "gaSampling.tar.gz")
+
+download.file(
+  url = "https://api.github.com/repos/roxycampher/gaSampling/tarball/HEAD",
+  destfile = package_archive,
+  method = "libcurl",
+  mode = "wb"
+)
+
+remotes::install_local(
+  package_archive,
+  upgrade = "never",
+  build_vignettes = FALSE
+)
 ```
+
+Run the download and installation commands in the same R session.
+Required package dependencies are installed as needed.
+
+After successful installation, load the package:
+
+```r
+library(gaSampling)
+```
+
+In future R sessions, only the `library(gaSampling)` command
+is needed, unless you want to install an updated version.
+
+Check the installed version and access function documentation:
+
+```r
+packageVersion("gaSampling")
+?prepare_sampling_frame
+?allocate_twostage_ga_joint
+```
+
+The download retrieves the latest version on the default GitHub
+branch. For reproducibility, record the GitHub commit used for
+your analyses.
 
 ## Quick example
 
@@ -162,10 +193,10 @@ constraints.
 | Component | Meaning |
 |-----------|---------|
 | `feasible` | Whether the returned allocation passes the constraints |
-| `allocation` | Stratum allocations and variance contributions |
-| `variance` | Total variance for the returned allocation |
-| `between_variance` | Between-cluster contribution to total variance |
-| `within_variance` | Within-cluster contribution to total variance |
+| `allocation` | Stratum allocations and contributions to the variance objective |
+| `variance` | Total variance objective value for the returned allocation |
+| `between_variance` | Between-cluster contribution to the variance objective |
+| `within_variance` | Within-cluster contribution to the variance objective |
 | `total_n` | Achieved total sample size |
 | `total_cost` | Achieved total cost |
 | `constraint_check` | Separate indicators for each constraint |
@@ -199,7 +230,11 @@ The genetic algorithm and repair procedure are heuristic. They do not
 guarantee a global optimum or a feasible result. Always inspect `feasible`
 and the constraint diagnostics.
 
-The variance calculation does not include finite population corrections.
+The allocation objective omits finite population corrections.
+For unequal-sized clusters, its implemented dispersion components
+also differ from those in the design-based variance of the
+population-mean estimator. A lower objective value does not,
+by itself, establish a lower design-based variance.
 
 Within each stratum, the allocation uses a common number of sampled units
 per selected cluster. The current joint allocator does not enforce observed
