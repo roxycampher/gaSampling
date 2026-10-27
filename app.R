@@ -43,8 +43,8 @@ example_path <- if (length(example_hits) > 0) example_hits[1] else NA_character_
 
 EXAMPLE <- list(
   stratum = "province", cluster = "id_ward", y_var = "count_children_present",
-  total_c = 50, cost_cluster = 1000, cost_unit = 100,
-  total_n = 500, max_cost = 1000000,
+  total_c = 75, cost_cluster = 1000, cost_unit = 100,
+  total_n = 250, max_cost = 100000,
   popSize = 50, maxiter = 100, run = 15, seed = 2026
 )
 PAPER_GA <- list(popSize = 200, maxiter = 500, run = 25, seed = 123)
